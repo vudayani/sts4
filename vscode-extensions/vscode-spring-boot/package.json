@@ -30,7 +30,10 @@
   ],
   "enabledApiProposals": [
     "chatAgents2",
-    "chatRequestAccess"
+    "chatRequestAccess",
+    "chatAgents2Additions",
+    "chatProvider",
+    "chat"
   ],
   "contributes": {
     "javaExtensions": [

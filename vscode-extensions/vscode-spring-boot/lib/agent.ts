@@ -12,7 +12,7 @@ interface SpringBootChatAgentResult extends vscode.ChatAgentResult2 {
 
 async function handleValidations(request: vscode.ChatAgentRequest, context: vscode.ChatAgentContext, progress: vscode.Progress<vscode.ChatAgentProgress>, token: vscode.CancellationToken): Promise<SpringBootChatAgentResult> {
 
-        if (request.slashCommand?.name == 'validations') {
+        if (request.subCommand == 'validations') {
             const access = await vscode.chat.requestChatAccess('copilot');
             const extension = vscode.extensions.getExtension('vmware.vscode-spring-boot');
             let detailedPrompt = '';
@@ -68,7 +68,7 @@ async function handleValidations(request: vscode.ChatAgentRequest, context: vsco
 }
 
 async function handleRewrite(request: vscode.ChatAgentRequest, context: vscode.ChatAgentContext, progress: vscode.Progress<vscode.ChatAgentProgress>, token: vscode.CancellationToken): Promise<SpringBootChatAgentResult> {
-    if (request.slashCommand?.name == 'rewrite') {
+    if (request.subCommand == 'rewrite') {
         const access = await vscode.chat.requestChatAccess('copilot');
         const extension = vscode.extensions.getExtension('vmware.vscode-spring-boot');
         let detailedPrompt = '';
@@ -118,7 +118,7 @@ async function handleRewrite(request: vscode.ChatAgentRequest, context: vscode.C
 }
 
 async function handleRelease(request: vscode.ChatAgentRequest, context: vscode.ChatAgentContext, progress: vscode.Progress<vscode.ChatAgentProgress>, token: vscode.CancellationToken): Promise<SpringBootChatAgentResult> {
-    if (request.slashCommand?.name == 'release') {
+    if (request.subCommand == 'release') {
         const access = await vscode.chat.requestChatAccess('copilot');
         let fileContent: string;
         fileContent = releaseNotes;
@@ -161,7 +161,7 @@ async function handleRelease(request: vscode.ChatAgentRequest, context: vscode.C
 }
 
 async function handleCreateProject(request: vscode.ChatAgentRequest, context: vscode.ChatAgentContext, progress: vscode.Progress<vscode.ChatAgentProgress>, token: vscode.CancellationToken): Promise<SpringBootChatAgentResult> {
-        if (request.slashCommand?.name == 'new') {
+        if (request.subCommand == 'new') {
             const access = await vscode.chat.requestChatAccess('copilot');
             
             const systemPrompt = 'Your task is to create Java source code for a comprehensive Spring Boot application from scratch \n'+
@@ -204,13 +204,13 @@ export function activate(
 ) {
 
     const agent = vscode.chat.createChatAgent('springboot', async (request, context, progress, token) => {
-		if (request.slashCommand?.name === 'release') {
+		if (request.subCommand === 'release') {
 			return handleRelease(request, context, progress, token);
-		} else if (request.slashCommand?.name === 'rewrite') {
+		} else if (request.subCommand === 'rewrite') {
 			return handleRewrite(request, context, progress, token);
-		} else if (request.slashCommand?.name === 'validations') {
+		} else if (request.subCommand === 'validations') {
 			return handleValidations(request, context, progress, token);
-		} else if (request.slashCommand?.name === 'new') {
+		} else if (request.subCommand === 'new') {
 			return handleCreateProject(request, context, progress, token);
 		} else {
             const access = await vscode.chat.requestChatAccess('copilot');
@@ -242,8 +242,8 @@ export function activate(
     });
     agent.description = vscode.l10n.t('Hi! How can I help you with your spring boot project?');
 	agent.fullName = vscode.l10n.t('Spring Boot');
-    agent.slashCommandProvider = {
-        provideSlashCommands(token) {
+    agent.subCommandProvider = {
+        provideSubCommands(token) {
             return [
                 { name: 'rewrite', description: 'Handle rewrite recipes for spring boot projects' },
                 { name: 'validations', description: 'Handle queries for spring boot validations' },
