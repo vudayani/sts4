@@ -7,7 +7,7 @@ import { extractCodeBlocks } from './utils/response-handler'; // Import the nece
 
 
 interface SpringBootChatAgentResult extends vscode.ChatAgentResult2 {
-	slashCommand: string;
+	subCommand: string;
 }
 
 async function handleValidations(request: vscode.ChatAgentRequest, context: vscode.ChatAgentContext, progress: vscode.Progress<vscode.ChatAgentProgress>, token: vscode.CancellationToken): Promise<SpringBootChatAgentResult> {
@@ -63,7 +63,7 @@ async function handleValidations(request: vscode.ChatAgentRequest, context: vsco
             for await (const fragment of chatRequest.response) {
                 progress.report({ content: fragment });
             }
-			return { slashCommand: 'validations' };
+			return { subCommand: 'validations' };
         }  
 }
 
@@ -113,7 +113,7 @@ async function handleRewrite(request: vscode.ChatAgentRequest, context: vscode.C
         for await (const fragment of chatRequest.response) {
             progress.report({ content: fragment });
         }
-        return { slashCommand:'rewrite' };
+        return { subCommand:'rewrite' };
     } 
 }
 
@@ -124,12 +124,12 @@ async function handleRelease(request: vscode.ChatAgentRequest, context: vscode.C
         fileContent = releaseNotes;
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
-            return { slashCommand: 'release' };
+            return { subCommand: 'release' };
         }
 
         const selection = editor.selection;
         if (selection.isEmpty) {
-            return { slashCommand: 'release' };
+            return { subCommand: 'release' };
         }
 
         const document = editor.document;
@@ -156,7 +156,7 @@ async function handleRelease(request: vscode.ChatAgentRequest, context: vscode.C
         for await (const fragment of chatRequest.response) {
             progress.report({ content: fragment });
         }
-        return { slashCommand: 'release' };
+        return { subCommand: 'release' };
     }
 }
 
@@ -188,7 +188,7 @@ async function handleCreateProject(request: vscode.ChatAgentRequest, context: vs
             const modifiedResponse = modifyResponse(entireResponse);
             console.log(modifiedResponse);
             progress.report({ content: entireResponse });
-            return { slashCommand: 'new' };
+            return { subCommand: 'new' };
         }
 }
 
