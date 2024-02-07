@@ -34,6 +34,9 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
 import org.springframework.boot.autoconfigure.context.ConfigurationPropertiesAutoConfiguration;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.reactive.HttpHandlerAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.reactive.ReactiveWebServerFactoryAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.reactive.WebFluxAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -117,9 +120,12 @@ import reactor.core.publisher.Hooks;
 	LanguageServerAutoConf.class, 
 	LanguageServerRunnerAutoConf.class, 
 	ConfigurationPropertiesAutoConfiguration.class, 
-	PropertyPlaceholderAutoConfiguration.class
+	PropertyPlaceholderAutoConfiguration.class,
+	ReactiveWebServerFactoryAutoConfiguration.class,
+	HttpHandlerAutoConfiguration.class,
+	WebFluxAutoConfiguration.class
 })
-@ComponentScan
+@ComponentScan(basePackages = {"org.springframework.boot.autoconfigure.web.reactive", "org.springframework.ide.vscode.boot.app"})
 @EnableConfigurationProperties(BootLsConfigProperties.class)
 //@SpringBootApplication
 public class BootLanguageServerBootApp {

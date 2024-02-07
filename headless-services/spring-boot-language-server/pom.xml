@@ -17,6 +17,7 @@
 		<dependencies.version>${project.version}</dependencies.version>
 		<jdt.core.version>3.33.0</jdt.core.version>
 		<lsp4xml.version>0.24.0</lsp4xml.version>
+		<SPRING_AI_VERSION>0.8.0-SNAPSHOT</SPRING_AI_VERSION>
 	</properties>
 
 	<repositories>
@@ -24,6 +25,7 @@
 			<id>${project.name}-repo</id>
 			<url>file://${project.basedir}/repo</url>
 		</repository>
+		
 
 		<!-- <repository> <id>oss-jfrog-snapshots</id> <url>https://oss.jfrog.org/artifactory/libs-snapshot</url> 
 			<snapshots> <enabled>true</enabled> </snapshots> </repository> -->
@@ -49,6 +51,23 @@
 				<enabled>false</enabled>
 			</releases>
 		</repository>
+		
+		<repository>
+	      <id>spring-milestones</id>
+	      <name>Spring Milestones</name>
+	      <url>https://repo.spring.io/milestone</url>
+	      <snapshots>
+	        <enabled>false</enabled>
+	      </snapshots>
+	    </repository>
+	    <repository>
+	      <id>spring-snapshots</id>
+	      <name>Spring Snapshots</name>
+	      <url>https://repo.spring.io/snapshot</url>
+	      <releases>
+	        <enabled>false</enabled>
+	      </releases>
+	      </repository>
 	</repositories>
 
 	<dependencies>
@@ -104,6 +123,23 @@
 			<artifactId>commons-rewrite</artifactId>
 			<version>${dependencies.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webflux</artifactId>
+		</dependency>
+
+		<dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-openai</artifactId>
+            <version>${SPRING_AI_VERSION}</version>
+        </dependency>
+
+
+       <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-tika-document-reader</artifactId>
+            <version>0.8.0-SNAPSHOT</version>
+        </dependency>
 		<dependency>
 			<groupId>org.eclipse.jdt</groupId>
 			<artifactId>org.eclipse.jdt.core</artifactId>
