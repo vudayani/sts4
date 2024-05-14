@@ -30,18 +30,22 @@ public class ClasspathData implements IClasspath {
 
 	final public static ClasspathData EMPTY_CLASSPATH_DATA = new ClasspathData(
 			null,
-			Collections.emptySet()
+			Collections.emptySet(),
+			null
 	);
 
 	private String name;
 	private Set<CPE> classpathEntries;
 	
 	private Cache<String, Optional<CPE>> binaryLibLookupCache;
+	
+	private String javaVersion;
 
 	public ClasspathData() {}
 
-	public ClasspathData(String name, Collection<CPE> classpathEntries) {
+	public ClasspathData(String name, Collection<CPE> classpathEntries, String javaVersion) {
 		this.name = name;
+		this.javaVersion = javaVersion;
 		this.classpathEntries = ImmutableSet.copyOf(classpathEntries);
 		this.binaryLibLookupCache = CacheBuilder.newBuilder().build();
 	}
@@ -56,7 +60,8 @@ public class ClasspathData implements IClasspath {
 		}
 		return new ClasspathData(
 				d.getName(),
-				entries==null ? ImmutableSet.of() : entries
+				entries==null ? ImmutableSet.of() : entries,
+				d.getJavaVersion()
 		);
 	}
 
@@ -76,6 +81,15 @@ public class ClasspathData implements IClasspath {
 
 	public void setClasspathEntries(Set<CPE> classpathEntries) {
 		this.classpathEntries = classpathEntries;
+	}
+	
+	@Override
+	public String getJavaVersion() {
+		return javaVersion;
+	}
+
+	public void setJavaVersion(String javaVersion) {
+		this.javaVersion = javaVersion;
 	}
 
 	@Override
@@ -122,4 +136,5 @@ public class ClasspathData implements IClasspath {
 			return false;
 		return true;
 	}
+
 }

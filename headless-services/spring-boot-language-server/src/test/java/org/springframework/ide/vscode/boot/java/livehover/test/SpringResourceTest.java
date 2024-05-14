@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class SpringResourceTest {
 
 	private MockProjects projects = new MockProjects();
-	private MockProject project = projects.create("test-project");
+	private MockProject project = projects.create("test-project", "");
 
 	private SourceLinks sourceLinks = SourceLinkFactory.NO_SOURCE_LINKS;
 

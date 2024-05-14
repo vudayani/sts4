@@ -74,6 +74,11 @@ public class DelegatingCachedClasspath implements IClasspath {
 	public String getName() {
 		return cachedData.get().getName();
 	}
+	
+	@Override
+	public String getJavaVersion() {
+		return cachedData.get().getJavaVersion();
+	}
 
 	@Override
 	public ImmutableList<CPE> getClasspathEntries() throws Exception {

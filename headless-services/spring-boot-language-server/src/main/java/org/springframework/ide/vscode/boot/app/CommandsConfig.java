@@ -12,6 +12,7 @@ package org.springframework.ide.vscode.boot.app;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.ide.vscode.boot.java.ai.VectorStoreHandler;
 import org.springframework.ide.vscode.boot.java.commands.WorkspaceBootExecutableProjects;
 import org.springframework.ide.vscode.commons.languageserver.java.JavaProjectFinder;
 import org.springframework.ide.vscode.commons.languageserver.util.SimpleLanguageServer;
@@ -22,5 +23,9 @@ public class CommandsConfig {
 	@Bean WorkspaceBootExecutableProjects workspaceBootProjects(SimpleLanguageServer server, JavaProjectFinder projectFinder, SpringSymbolIndex symbolIndex) {
 		return new WorkspaceBootExecutableProjects(server, projectFinder, symbolIndex);
 	}
+	
+//	@Bean VectorStoreHandler vectorStoreHandler(SimpleLanguageServer server) {
+//		return new VectorStoreHandler(server);
+//	}
 
 }

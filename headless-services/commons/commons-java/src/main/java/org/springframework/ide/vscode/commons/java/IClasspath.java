@@ -41,6 +41,12 @@ public interface IClasspath {
 	Collection<CPE> getClasspathEntries() throws Exception;
 	
 	/**
+	 * Java Version
+	 * @return return java version
+	 */
+	String getJavaVersion();
+	
+	/**
 	 * Finds a classpath entry among JAR libraries that start with a prefix. Prefix must typically contain the full lib name such that the match is only one.
 	 * @param prefix the library prefix
 	 * @return the classpath entry

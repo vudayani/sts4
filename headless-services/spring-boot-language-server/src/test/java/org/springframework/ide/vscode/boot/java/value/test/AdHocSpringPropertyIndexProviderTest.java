@@ -10,15 +10,14 @@
  *******************************************************************************/
 package org.springframework.ide.vscode.boot.java.value.test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.io.File;
 
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.springframework.ide.vscode.boot.java.value.test.MockProjects.MockProject;
 import org.springframework.ide.vscode.boot.metadata.AdHocSpringPropertyIndexProvider;
 import org.springframework.ide.vscode.boot.metadata.PropertyInfo;
-import org.springframework.ide.vscode.commons.languageserver.util.SimpleTextDocumentService;
 import org.springframework.ide.vscode.commons.languageserver.util.TextDocumentSaveChange;
 import org.springframework.ide.vscode.commons.util.FuzzyMap;
 import org.springframework.ide.vscode.commons.util.text.LanguageId;
@@ -31,7 +30,7 @@ public class AdHocSpringPropertyIndexProviderTest {
 
     @Test
     void parseProperties() throws Exception {
-        MockProject project = projects.create("test-project");
+        MockProject project = projects.create("test-project", "");
         project.ensureFile("src/main/resources/application.properties",
                 "some-adhoc-foo=somefoo\n" +
                         "some-adhoc-bar=somebar\n"
@@ -48,7 +47,7 @@ public class AdHocSpringPropertyIndexProviderTest {
     @Test
     void parseYamlWithList() throws Exception {
         //Note: the LoggerNameProvider implementation relies on this behavior
-        MockProject project = projects.create("test-project");
+        MockProject project = projects.create("test-project", "");
         project.ensureFile("src/main/resources/application.yml",
                 "from-yaml:\n" +
                         "  adhoc:\n" +
@@ -65,7 +64,7 @@ public class AdHocSpringPropertyIndexProviderTest {
 
     @Test
     void parseYaml() throws Exception {
-        MockProject project = projects.create("test-project");
+        MockProject project = projects.create("test-project", "");
         project.ensureFile("src/main/resources/application.yml",
                 "from-yaml:\n" +
                         "  adhoc:\n" +
@@ -83,7 +82,7 @@ public class AdHocSpringPropertyIndexProviderTest {
 
     @Test
     void respondsToClasspathChanges() throws Exception {
-        MockProject project = projects.create("test-project");
+        MockProject project = projects.create("test-project", "");
         project.ensureFile("src/main/resources/application.properties",
                 "initial-property=somefoo\n"
         );
@@ -108,7 +107,7 @@ public class AdHocSpringPropertyIndexProviderTest {
 
     @Test
     void respondsToFileChanges() throws Exception {
-        MockProject project = projects.create("test-project");
+        MockProject project = projects.create("test-project", "");
         project.ensureFile("src/main/resources/application.properties",
                 "initial-property=somefoo\n"
         );
@@ -133,7 +132,7 @@ public class AdHocSpringPropertyIndexProviderTest {
 
     @Test
     void respondsToDocumentSave() throws Exception {
-        MockProject project = projects.create("test-project");
+        MockProject project = projects.create("test-project", "");
         project.ensureFile("src/main/resources/application.properties",
                 "initial-property=somefoo\n"
         );

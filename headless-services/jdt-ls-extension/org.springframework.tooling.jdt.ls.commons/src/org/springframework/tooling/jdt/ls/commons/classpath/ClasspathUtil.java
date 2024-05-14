@@ -97,7 +97,9 @@ public class ClasspathUtil {
 				}
 			}
 		}
-		Classpath classpath = new Classpath(cpEntries);
+//		String javaVersion = getJreContainer(javaProject.getRawClasspath()).getPath().lastSegment();
+//		System.out.println(javaVersion);
+		Classpath classpath = new Classpath(cpEntries, "");
 		logger.debug("classpath=" + classpath.getEntries().size() + " entries");
 		return classpath;
 	}

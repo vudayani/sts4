@@ -82,6 +82,11 @@ public class MavenProjectClasspath implements IClasspath {
 	public String getName() {
 		return cachedData != null ? cachedData.getName() : null;
 	}
+	
+	@Override
+	public String getJavaVersion() {
+		return cachedData.getJavaVersion() != null ? cachedData.getJavaVersion() : null;
+	}
 		
 	private ImmutableList<CPE> resolveClasspathEntries(MavenProject project) throws Exception {
 		LinkedHashSet<CPE> entries = new LinkedHashSet<>();
@@ -252,8 +257,9 @@ public class MavenProjectClasspath implements IClasspath {
 
 		ImmutableList<CPE> entries = resolveClasspathEntries(project);
 		String name = project.getArtifact().getArtifactId();
+//		String cachedData = project.;
 
-		return new ClasspathData(name, new LinkedHashSet<>(entries));
+		return new ClasspathData(name, new LinkedHashSet<>(entries), "");
 	}
 
 	@Override

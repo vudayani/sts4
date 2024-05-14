@@ -80,6 +80,7 @@ public class MockProjects {
 
 		final private File root;
 		final private String name;
+		final private String javaVersion;
 		final private List<File> sourceFolders = new ArrayList<File>();
 		private File defaultOutputFolder;
 
@@ -100,12 +101,18 @@ public class MockProjects {
 				}
 				return cp;
 			}
+
+			@Override
+			public String getJavaVersion() {
+				return javaVersion;
+			}
 		};
 
-		public MockProject(String name) {
+		public MockProject(String name, String javaVersion) {
 			synchronized (projectsByName) {
 				assertFalse(projectsByName.containsKey(name));
 				this.name = name;
+				this.javaVersion = "";
 				this.root = Files.createTempDir();
 				createSourceFolder("src/main/java");
 				createSourceFolder("src/main/resources");
@@ -311,8 +318,8 @@ public class MockProjects {
 		}
 	}
 
-	public MockProject create(String name) {
-		return new MockProject(name);
+	public MockProject create(String name, String javaVersion) {
+		return new MockProject(name, javaVersion);
 	}
 
 }
