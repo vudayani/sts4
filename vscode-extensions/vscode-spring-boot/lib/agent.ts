@@ -9,7 +9,7 @@ import path from 'path';
 import fs from "fs";
 import { getTargetGuideMardown, getWorkspaceRoot, getExecutable } from './utils/util';
 import { createConverter } from "vscode-languageclient/lib/common/protocolConverter";
-import { systemPrompt } from './utils/system-ai-prompt';
+import { systemBoot2Prompt, systemBoot3Prompt, systemPrompt } from './utils/system-ai-prompt';
 import { userPrompt } from './utils/user-ai-prompt';
 
 interface Prompt {
@@ -31,11 +31,12 @@ interface ExecutableBootProject {
     classpath: string[];
     gav: string;
     buildTool: string;
-    springBootVersion: string;
+    springBootVersion: string;  
+    javaVersion: string;
 }
 
 const CONVERTER = createConverter(undefined, true, true);
-const LANGUAGE_MODEL_ID = 'copilot-gpt-4';
+const MODEL_SELECTOR: vscode.LanguageModelChatSelector = { vendor: 'copilot', family: 'gpt-3.5-turbo' };
 const AGENT_ID = 'springboot';
 
 interface SpringBootChatAgentResult extends vscode.ChatResult {
@@ -112,7 +113,7 @@ async function fetchJson<T>(title: string, message: string, args: string[], cwd?
     });
 }
 
-function replacePlaceholder(fileContent: string, match: ExecutableBootProject, question: string) {
+function replacePlaceholder(fileContent: string, question: string, match?: ExecutableBootProject, joinedVectorSearch?: string) {
     if(match !== null && match !== undefined) {
         const lastIndex = match.mainClass.lastIndexOf('.')
         const replacements = {
@@ -120,7 +121,9 @@ function replacePlaceholder(fileContent: string, match: ExecutableBootProject, q
             'Package Name': match.mainClass.substring(0, lastIndex),
             'Build Tool': match.buildTool,
             'Spring Boot Version': match.springBootVersion,
-            'Description': question
+            'Description': question,
+            'Java Version': match.javaVersion,
+            'Contents': joinedVectorSearch
         };
     
         for (const placeholder in replacements) {
@@ -129,16 +132,24 @@ function replacePlaceholder(fileContent: string, match: ExecutableBootProject, q
     } else {
         fileContent = fileContent.replace(new RegExp('Description', 'g'), question);
     }
+
+    // if(joinedVectorSearch !== undefined && joinedVectorSearch !== null) {
+    //     fileContent = fileContent.replace(new RegExp('CONTENTS', 'g'), joinedVectorSearch);
+    // }
     return fileContent;
 }
 
-function enhancePrompt(question: string, cwd: string, projects: ExecutableBootProject[]): Thenable<Prompt> {
+async function enhancePrompt(question: string, cwd: string, projects: ExecutableBootProject[]): Promise<Thenable<Prompt>> {
 
     const match = projects.find(project => project.uri.toString().replace('file:', '') === cwd);
     const prompt = {} as Prompt;
-
-    prompt.systemPrompt = replacePlaceholder(systemPrompt, match, question);
-    prompt.userPrompt = replacePlaceholder(userPrompt, match, question);
+    prompt.systemPrompt = replacePlaceholder(systemPrompt, question, match); 
+    if(match !== null && match !== undefined && match.springBootVersion.startsWith('3')) {
+        prompt.systemPrompt = prompt.systemPrompt + '\n' + systemBoot3Prompt;
+    } else {
+        prompt.systemPrompt = prompt.systemPrompt + '\n' + systemBoot2Prompt;
+    }
+    prompt.userPrompt = replacePlaceholder(userPrompt, question, match);
     prompt.projName = match?.name;
     return Promise.resolve(prompt);
 }
@@ -202,11 +213,12 @@ async function writeResponseToFile(response: string, shortPackageName: string, c
     }
 }
 
-async function chatRequest(enhancedPrompt: Prompt, token: vscode.CancellationToken) {
+async function chatRequest(enhancedPrompt: Prompt, token: vscode.CancellationToken, question: string) {
     
     const messages = [
-            new  vscode.LanguageModelChatSystemMessage(enhancedPrompt.systemPrompt),
-            new vscode.LanguageModelChatUserMessage(enhancedPrompt.userPrompt)
+            vscode.LanguageModelChatMessage.Assistant(enhancedPrompt.systemPrompt),
+            vscode.LanguageModelChatMessage.User(enhancedPrompt.userPrompt),
+            vscode.LanguageModelChatMessage.User(question)
     ];
     let response = '';
     return vscode.window.withProgress({
@@ -221,7 +233,11 @@ async function chatRequest(enhancedPrompt: Prompt, token: vscode.CancellationTok
             }
             let chatResponse: vscode.LanguageModelChatResponse | undefined;
             try {
-                chatResponse = await vscode.lm.sendChatRequest(LANGUAGE_MODEL_ID, messages, {}, token);
+                const [model] = await vscode.lm.selectChatModels(MODEL_SELECTOR);
+                console.log(model)
+                if(model) {
+                    chatResponse = await model.sendRequest(messages, {}, token);
+                }      
             } catch (error) {
                 if (error instanceof vscode.LanguageModelError) {
                     console.log(error.message, error.code);
@@ -230,7 +246,7 @@ async function chatRequest(enhancedPrompt: Prompt, token: vscode.CancellationTok
             }
 
             try {
-                for await (const fragment of chatResponse.stream) {
+                for await (const fragment of chatResponse.text) {
                     response += fragment;
                 }
                 resolve(response);
@@ -246,32 +262,25 @@ async function chatRequest(enhancedPrompt: Prompt, token: vscode.CancellationTok
 
 async function handleAiPrompts(request: vscode.ChatRequest, context: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken): Promise<SpringBootChatAgentResult> {
 
-    const previousMessages = context.history.filter(h => {
-        return h instanceof vscode.ChatRequestTurn && h.participant == AGENT_ID
-    }) as vscode.ChatRequestTurn[];
-    console.log(previousMessages);
-
-    const previousMessagesResp = context.history.filter(h => {
-        return h instanceof vscode.ChatResponseTurn && h.participant == AGENT_ID
-    }) as vscode.ChatResponseTurn[];
-    console.log(previousMessagesResp);
-
     const cwd = (await getWorkspaceRoot()).fsPath;
 
     const projects = await vscode.commands.executeCommand("sts/spring-boot/executableBootProjects") as ExecutableBootProject[];
-    console.log(projects)
-    // get enhanced prompt by getting the spring context from boot ls
+    console.log(projects);
+
+    // get enhanced prompt by getting the spring context from boot ls and adding vector search results
     const enhancedPrompt = await enhancePrompt(request.prompt, cwd, projects);
+    console.log(enhancedPrompt.systemPrompt);
+    console.log(enhancedPrompt.userPrompt);
 
     // chat request to copilot LLM
-    const response = await chatRequest(enhancedPrompt, token);
+    const response = await chatRequest(enhancedPrompt, token, request.prompt);
 
     // write the response to markdown file
     await writeResponseToFile(response, enhancedPrompt.projName, cwd);
 
     const uri = await getTargetGuideMardown();
     // modify the response from copilot LLM i.e. make response Boot 3 compliant if necessary
-    await enhanceResponse(uri, enhancedPrompt.projName, cwd);
+    // await enhanceResponse(uri, enhancedPrompt.shortPackageName, cwd);
 
     // return modified response to chat
     const documentContent = await vscode.workspace.fs.readFile(uri);
@@ -291,9 +300,11 @@ export function activate(
 ) {
 
     const agent = vscode.chat.createChatParticipant(AGENT_ID, async (request, context, progress, token) => {
+
+        if (request.command === 'add') {
+            return handleAiPrompts(request, context, progress, token);
+        }
         return handleAiPrompts(request, context, progress, token);
     });
     agent.iconPath = vscode.Uri.joinPath(context.extensionUri, 'readme-imgs', 'spring-tools-icon.png');
 }
-
-

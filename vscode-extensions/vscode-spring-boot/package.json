@@ -29,25 +29,24 @@
     "onCommand:vscode-spring-boot.ls.start"
   ],
   "enabledApiProposals": [
-    "chatParticipant",
-    "languageModels",
-    "languageModelSystem"
+    "chatVariableResolver"
   ],
   "contributes": {
     "chatParticipants": [
       {
         "id": "springboot",
+        "fullName": "Spring boot",
         "name": "springboot",
         "description": "Spring boot chat agent",
         "isSticky": true,
         "commands": [
           {
-            "name": "prompt",
-            "description": "Handle AI Prompts through Spring cli"
+            "name": "add",
+            "description": "Add a new dependency or module to the exisiting project"
           },
           {
-            "name": "new",
-            "description": "create new springboot project"
+            "name": "generate",
+            "description": "Generate unit test cases for the project"
           }
         ]
       }
@@ -1222,7 +1221,6 @@
   },
   "devDependencies": {
     "@types/node": "^18.8.0",
-    "@types/vscode": "1.75.0",
     "@vscode/vsce": "^2.22.0",
     "typescript": "^4.8.0"
   },
