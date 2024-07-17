@@ -77,14 +77,12 @@ public class AddFieldRecipe extends Recipe {
 								&& varDecl.getTypeExpression().toString().equals(fieldType));
 				
 				if (!hasOwnerRepoField) {
-					// Add import
-					// maybeAddImport(fullyQualifiedType.getFullyQualifiedName());
-
 					classDecl = classDecl.withBody(fieldTemplate.apply(new Cursor(getCursor(), classDecl.getBody()),
 							classDecl.getBody().getCoordinates().firstStatement()));
 					
+					maybeAddImport(fullyQualifiedType.getFullyQualifiedName(), false);
 				}
-				return classDecl;
+	            return classDecl;
 			}
 		};
 	}
