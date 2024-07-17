@@ -14,19 +14,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.eclipse.jgit.diff.Edit;
+import org.eclipse.jgit.diff.EditList;
 import org.eclipse.lsp4j.AnnotatedTextEdit;
 import org.eclipse.lsp4j.CreateFile;
 import org.eclipse.lsp4j.DeleteFile;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.ResourceOperation;
 import org.eclipse.lsp4j.TextDocumentEdit;
 import org.eclipse.lsp4j.TextEdit;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceEdit;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.openrewrite.Result;
-import org.eclipse.jgit.diff.Edit;
-import org.eclipse.jgit.diff.EditList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ide.vscode.commons.languageserver.completion.DocumentEdits;
@@ -69,6 +70,44 @@ public class ORDocUtils {
 				return Optional.of(edits);
 			}
 		return Optional.empty();	
+
+	}
+	
+	public static Optional<DocumentEdits> computeDocumentEdits(WorkspaceEdit we, IDocument doc) {
+		if (!we.getDocumentChanges().isEmpty()) {
+			DocumentEdits edits = new DocumentEdits(doc, false);
+			List<Either<TextDocumentEdit, ResourceOperation>> changes = we.getDocumentChanges();
+			for (Either<TextDocumentEdit, ResourceOperation> change : changes) {
+				if (change.isLeft()) {
+					TextDocumentEdit textDocumentEdit = change.getLeft();
+					List<TextEdit> textEdits = textDocumentEdit.getEdits();
+					for (TextEdit textEdit : textEdits) {
+						Range range = textEdit.getRange();
+						Position start = range.getStart();
+						Position end = range.getEnd();
+						String newText = textEdit.getNewText();
+
+						try {
+							int startOffset = doc.getLineOffset(start.getLine()) + start.getCharacter();
+							int endOffset = doc.getLineOffset(end.getLine()) + end.getCharacter();
+
+							if (startOffset == endOffset) {
+								edits.insert(startOffset, newText);
+							} else if (newText.isEmpty()) {
+								edits.delete(startOffset, endOffset);
+							} else {
+								edits.replace(startOffset, endOffset, newText);
+							}
+						} catch (BadLocationException ex) {
+							log.error("Failed to apply text edit", ex);
+						}
+					}
+				}
+			}
+
+			return Optional.of(edits);
+		}
+		return Optional.empty();
 
 	}
 	
@@ -160,7 +199,7 @@ public class ORDocUtils {
 		}
 		WorkspaceEdit we = new WorkspaceEdit();
 		we.setDocumentChanges(new ArrayList<>());
-		for (Result result : results) {
+		for (Result result : results) {	
 			if (result.getBefore() == null) {
 				String docUri = result.getAfter().getSourcePath().toUri().toASCIIString();
 				CreateFile ro = new CreateFile();

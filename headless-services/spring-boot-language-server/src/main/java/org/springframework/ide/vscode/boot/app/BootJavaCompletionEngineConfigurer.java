@@ -33,6 +33,7 @@ import org.springframework.ide.vscode.boot.java.beans.ResourceCompletionProvider
 import org.springframework.ide.vscode.boot.java.data.DataRepositoryCompletionProcessor;
 import org.springframework.ide.vscode.boot.java.handlers.BootJavaCompletionEngine;
 import org.springframework.ide.vscode.boot.java.handlers.CompletionProvider;
+import org.springframework.ide.vscode.boot.java.rewrite.RewriteRefactorings;
 import org.springframework.ide.vscode.boot.java.scope.ScopeCompletionProcessor;
 import org.springframework.ide.vscode.boot.java.snippets.JavaSnippet;
 import org.springframework.ide.vscode.boot.java.snippets.JavaSnippetContext;
@@ -109,7 +110,8 @@ public class BootJavaCompletionEngineConfigurer {
 			@Qualifier("adHocProperties") ProjectBasedPropertyIndexProvider adHocProperties,
 			JavaSnippetManager snippetManager, 
 			CompilationUnitCache cuCache,
-			SpringMetamodelIndex springIndex) {
+			SpringMetamodelIndex springIndex,
+			RewriteRefactorings rewriteRefactorings ) {
 		
 		SpringPropertyIndexProvider indexProvider = params.indexProvider;
 		JavaProjectFinder javaProjectFinder = params.projectFinder;
@@ -123,8 +125,7 @@ public class BootJavaCompletionEngineConfigurer {
 		providers.put(Annotations.SCOPE, new AnnotationAttributeCompletionProcessor(javaProjectFinder, Map.of("value", new ScopeCompletionProcessor())));
 		providers.put(Annotations.DEPENDS_ON, new AnnotationAttributeCompletionProcessor(javaProjectFinder, Map.of("value", new DependsOnCompletionProcessor(springIndex))));
 		providers.put(Annotations.QUALIFIER, new AnnotationAttributeCompletionProcessor(javaProjectFinder, Map.of("value", new QualifierCompletionProvider(springIndex))));
-		providers.put(Annotations.PROFILE, new AnnotationAttributeCompletionProcessor(javaProjectFinder, Map.of("value", new ProfileCompletionProvider(springIndex))));
-		providers.put(Annotations.BEAN, new BeanCompletionProcessor(javaProjectFinder, springIndex));
+		providers.put(Annotations.BEAN, new BeanCompletionProcessor(javaProjectFinder, springIndex, rewriteRefactorings));
 
 		
 		providers.put(Annotations.RESOURCE_JAVAX, new AnnotationAttributeCompletionProcessor(javaProjectFinder, Map.of("name", new ResourceCompletionProvider(springIndex))));
