@@ -21,15 +21,15 @@ import org.springframework.ide.vscode.commons.util.text.TextDocument;
 /**
  * @author Udayani V
  */
-public class BeanCompletionProcessor implements CompletionProvider {
+public class BeanCompletionProvider implements CompletionProvider {
 
-	private static final Logger log = LoggerFactory.getLogger(BeanCompletionProcessor.class);
+	private static final Logger log = LoggerFactory.getLogger(BeanCompletionProvider.class);
 
 	private final JavaProjectFinder javaProjectFinder;
 	private final SpringMetamodelIndex springIndex;
 	private final RewriteRefactorings rewriteRefactorings;
 
-	public BeanCompletionProcessor(JavaProjectFinder javaProjectFinder, SpringMetamodelIndex springIndex,
+	public BeanCompletionProvider(JavaProjectFinder javaProjectFinder, SpringMetamodelIndex springIndex,
 			RewriteRefactorings rewriteRefactorings) {
 		this.javaProjectFinder = javaProjectFinder;
 		this.springIndex = springIndex;
@@ -49,7 +49,6 @@ public class BeanCompletionProcessor implements CompletionProvider {
 
 			if (node instanceof SimpleName) {
 				Bean[] beans = this.springIndex.getBeansOfProject(project.getElementName());
-
 				for (Bean bean : beans) {
 					if (FuzzyMatcher.matchScore(node.toString(), bean.getName()) != 0.0) {
 						DocumentEdits edits = new DocumentEdits(doc, false);
