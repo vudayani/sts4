@@ -13,7 +13,7 @@ import org.springframework.ide.vscode.commons.languageserver.completion.Document
 import org.springframework.ide.vscode.commons.languageserver.completion.ICompletionProposal;
 import org.springframework.ide.vscode.commons.rewrite.ORDocUtils;
 import org.springframework.ide.vscode.commons.rewrite.config.RecipeScope;
-import org.springframework.ide.vscode.commons.rewrite.java.AddFieldRecipe;
+import org.springframework.ide.vscode.commons.rewrite.java.ConstructorInjectionRecipe;
 import org.springframework.ide.vscode.commons.rewrite.java.FixDescriptor;
 import org.springframework.ide.vscode.commons.util.Renderable;
 import org.springframework.ide.vscode.commons.util.text.IDocument;
@@ -80,16 +80,17 @@ public class BeanCompletionProposal implements ICompletionProposal {
 
 	@Override
 	public Optional<java.util.function.Supplier<DocumentEdits>> getAdditionalEdit() {
-		FixDescriptor f = new FixDescriptor(AddFieldRecipe.class.getName(), List.of(this.doc.getUri()),"Inject bean completions")
-				.withParameters(Map.of("fullyQualifiedName", this.detail))
+//		FixDescriptor f = new FixDescriptor(ConstructorInjectionRecipe.class.getName(), List.of(this.doc.getUri()),"Inject bean completions")
+//					.withParameters(Map.of("fieldName", this.label, "classFqName","org.springframework.samples.petclinic.owner.TestController"))
+//					.withRecipeScope(RecipeScope.NODE);
+		FixDescriptor f = new FixDescriptor("com.vmware.tanzu.spring.framework.InjectBeanCompletionRecipe", List.of(this.doc.getUri()),"Inject bean completions")
+				.withParameters(Map.of("fullyQualifiedName", this.detail, "fieldName", this.label, "classFqName","org.springframework.samples.petclinic.owner.TestController"))
 				.withRecipeScope(RecipeScope.NODE);
 		JsonElement jsonElement = gson.toJsonTree(f);
 		CompletableFuture<WorkspaceEdit> workspaceEdits = this.rewriteRefactorings.createEdit(jsonElement);
 
 		CompletableFuture<Optional<DocumentEdits>> docEditsFuture = workspaceEdits.thenApply(workspaceEdit -> {
-//	        System.out.println("Workspace Edit: " + workspaceEdit.getDocumentChanges().toString());
 			Optional<DocumentEdits> docEdits = ORDocUtils.computeDocumentEdits(workspaceEdit, doc);
-//	        System.out.println(docEdits.get().toString());
 			return docEdits;
 
 		});

@@ -47,6 +47,10 @@ public class ConstructorInjectionRecipe extends Recipe {
 	public @Description String getDescription() {
 		return "Add bean injection.";
 	}
+	
+	@NonNull
+	@Nullable
+	String fullyQualifiedName;
 
 	@NonNull
 	@Nullable
@@ -57,7 +61,8 @@ public class ConstructorInjectionRecipe extends Recipe {
 	String classFqName;
 
 	@JsonCreator
-	public ConstructorInjectionRecipe(@NonNull @JsonProperty("fullyQualifiedClassName") String fieldName,@NonNull @JsonProperty("classFqName") String classFqName) {
+	public ConstructorInjectionRecipe(@NonNull @JsonProperty("fullyQualifiedClassName") String fullyQualifiedName, @NonNull @JsonProperty("fieldName") String fieldName,@NonNull @JsonProperty("classFqName") String classFqName) {
+		this.fullyQualifiedName = fullyQualifiedName;
 		this.fieldName = fieldName;
 		this.classFqName = classFqName;
 	}
@@ -72,7 +77,7 @@ public class ConstructorInjectionRecipe extends Recipe {
 
 		private final String classFqName;
 		private final String fieldName;
-
+		
 		public CustomFieldIntoConstructorParameterVisitor(String classFqName, String fieldName) {
 			super(classFqName, fieldName);
 			this.classFqName = classFqName;
@@ -108,98 +113,114 @@ public class ConstructorInjectionRecipe extends Recipe {
 				}
 				MethodDeclaration constructor = blockCursor.getParent().getMessage("applicableConstructor");
 				ClassDeclaration c = blockCursor.getParent().getValue();
+				TypeTree fieldType = TypeTree.build(fullyQualifiedName);
 				if (constructor == null) {
 					doAfterVisit(
-							new AddConstructorVisitor(c.getSimpleName(), fieldName, multiVariable.getTypeExpression()));
+							new AddConstructorVisitor(c.getSimpleName(), fieldName, fieldType));
 				} else {
 					doAfterVisit(new AddConstructorParameterAndAssignment(constructor, fieldName,
-							multiVariable.getTypeExpression()));
+							fieldType));
 				}
 			}
 			return mv;
 		}
 	}
 
-	private class AddConstructorVisitor extends JavaVisitor<ExecutionContext> {
-		private final String className;
-		private final String fieldName;
-		private final TypeTree type;
+    private static class AddConstructorVisitor extends JavaVisitor<ExecutionContext> {
+        private final String className;
+        private final String fieldName;
+        private final TypeTree type;
 
-		public AddConstructorVisitor(String className, String fieldName, TypeTree type) {
-			this.className = className;
-			this.fieldName = fieldName;
-			this.type = type;
-		}
+        public AddConstructorVisitor(String className, String fieldName, TypeTree type) {
+            this.className = className;
+            this.fieldName = fieldName;
+            this.type = type;
+        }
 
-		@Override
-		public J visitBlock(Block block, ExecutionContext p) {
-			if (getCursor().getParent() != null) {
-				Object n = getCursor().getParent().getValue();
-				if (n instanceof ClassDeclaration) {
-					ClassDeclaration classDecl = (ClassDeclaration) n;
-					JavaType.FullyQualified typeFqn = TypeUtils.asFullyQualified(type.getType());
-					if (typeFqn != null && classDecl.getKind() == ClassDeclaration.Kind.Type.Class
-							&& className.equals(classDecl.getSimpleName())) {
-						JavaTemplate.Builder template = JavaTemplate
-								.builder("" + classDecl.getSimpleName() + "(" + typeFqn.getClassName() + " " + fieldName
-										+ ") {\n" + "this." + fieldName + " = " + fieldName + ";\n" + "}\n")
-								.contextSensitive();
-						FullyQualified fq = TypeUtils.asFullyQualified(type.getType());
-						if (fq != null) {
-							template.imports(fq.getFullyQualifiedName());
-							maybeAddImport(fq);
-						}
-						Optional<Statement> firstMethod = block.getStatements().stream()
-								.filter(MethodDeclaration.class::isInstance).findFirst();
+        @Override
+        public J visitBlock(Block block, ExecutionContext p) {
+            if (getCursor().getParent() != null) {
+                Object n = getCursor().getParent().getValue();
+                if (n instanceof ClassDeclaration) {
+                    ClassDeclaration classDecl = (ClassDeclaration) n;
+                    JavaType.FullyQualified typeFqn = TypeUtils.asFullyQualified(type.getType());
+                    if (typeFqn != null && classDecl.getKind() == ClassDeclaration.Kind.Type.Class && className.equals(classDecl.getSimpleName())) {
+                        JavaTemplate.Builder template = JavaTemplate.builder(""
+                                + classDecl.getSimpleName() + "(" + typeFqn.getClassName() + " " + fieldName + ") {\n"
+                                + "this." + fieldName + " = " + fieldName + ";\n"
+                                + "}\n"
+                        ).contextSensitive();
+                        FullyQualified fq = TypeUtils.asFullyQualified(type.getType());
+                        if (fq != null) {
+                            template.imports(fq.getFullyQualifiedName());
+                            maybeAddImport(fq);
+                        }
+                        Optional<Statement> firstMethod = block.getStatements().stream().filter(MethodDeclaration.class::isInstance).findFirst();
 
-						return firstMethod
-								.map(statement -> (J) template.build().apply(getCursor(),
-										statement.getCoordinates().before()))
-								.orElseGet(() -> template.build().apply(getCursor(),
-										block.getCoordinates().lastStatement()));
-					}
-				}
-			}
-			return block;
-		}
-	}
+                        return firstMethod.map(statement ->
+                                (J) template.build()
+                                    .apply(getCursor(),
+                                        statement.getCoordinates().before()
+                                    )
+                            )
+                            .orElseGet(() ->
+                                template.build()
+                                    .apply(
+                                        getCursor(),
+                                        block.getCoordinates().lastStatement()
+                                    )
+                            );
+                    }
+                }
+            }
+            return block;
+        }
+    }
 
-	private class AddConstructorParameterAndAssignment extends JavaIsoVisitor<ExecutionContext> {
-		private final MethodDeclaration constructor;
-		private final String fieldName;
-		private final String methodType;
+    private static class AddConstructorParameterAndAssignment extends JavaIsoVisitor<ExecutionContext> {
+        private final MethodDeclaration constructor;
+        private final String fieldName;
+        private final String methodType;
 
-		public AddConstructorParameterAndAssignment(MethodDeclaration constructor, String fieldName, TypeTree type) {
-			this.constructor = constructor;
-			this.fieldName = fieldName;
-			JavaType.FullyQualified fq = TypeUtils.asFullyQualified(type.getType());
-			if (fq != null) {
-				methodType = fq.getClassName();
-			} else {
-				throw new IllegalArgumentException("Unable to determine parameter type");
-			}
-		}
+        public AddConstructorParameterAndAssignment(MethodDeclaration constructor, String fieldName, TypeTree type) {
+            this.constructor = constructor;
+            this.fieldName = fieldName;
+            JavaType.FullyQualified fq = TypeUtils.asFullyQualified(type.getType());
+            if (fq != null) {
+                methodType = fq.getClassName();
+            } else {
+                throw new IllegalArgumentException("Unable to determine parameter type");
+            }
+        }
 
-		@Override
-		public MethodDeclaration visitMethodDeclaration(MethodDeclaration method, ExecutionContext p) {
-			J.MethodDeclaration md = super.visitMethodDeclaration(method, p);
-			if (md == this.constructor && md.getBody() != null) {
-				List<J> params = md.getParameters().stream().filter(s -> !(s instanceof J.Empty))
-						.collect(Collectors.toList());
-				String paramsStr = Stream
-						.concat(params.stream().map(s -> "#{}"), Stream.of(methodType + " " + fieldName))
-						.collect(Collectors.joining(", "));
+        @Override
+        public MethodDeclaration visitMethodDeclaration(MethodDeclaration method, ExecutionContext p) {
+            J.MethodDeclaration md = super.visitMethodDeclaration(method, p);
+            if (md == this.constructor && md.getBody() != null) {
+                List<J> params = md.getParameters().stream().filter(s -> !(s instanceof J.Empty)).collect(Collectors.toList());
+                String paramsStr = Stream.concat(params.stream()
+                        .map(s -> "#{}"), Stream.of(methodType + " " + fieldName)).collect(Collectors.joining(", "));
 
-				md = JavaTemplate.builder(paramsStr).contextSensitive().build().apply(getCursor(),
-						md.getCoordinates().replaceParameters(), params.toArray());
-				updateCursor(md);
+                md = JavaTemplate.builder(paramsStr)
+                    .contextSensitive()
+                    .build()
+                    .apply(
+                        getCursor(),
+                        md.getCoordinates().replaceParameters(),
+                        params.toArray()
+                    );
+                updateCursor(md);
 
-				// noinspection ConstantConditions
-				md = JavaTemplate.builder("this." + fieldName + " = " + fieldName + ";").contextSensitive().build()
-						.apply(getCursor(), md.getBody().getCoordinates().lastStatement());
-			}
-			return md;
-		}
-
-	};
+                //noinspection ConstantConditions
+                md = JavaTemplate.builder("this." + fieldName + " = " + fieldName + ";")
+                    .contextSensitive()
+                    .build()
+                    .apply(
+                        getCursor(),
+                        md.getBody().getCoordinates().lastStatement()
+                    );
+            }
+            return md;
+        }
+    }
 }

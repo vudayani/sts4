@@ -20,7 +20,7 @@ public class ConstructorInjetionRecipeTest implements RewriteTest {
 
 	@Override
 	public void defaults(RecipeSpec spec) {
-		spec.recipe(new ConstructorInjectionRecipe("ownerRepository", "com.example.demo.A"))
+		spec.recipe(new ConstructorInjectionRecipe("com.example.test.OwnerRepository", "ownerRepository", "com.example.demo.A"))
 				.parser(JavaParser.fromJavaVersion().classpath("spring-beans"));
 	}
 	
@@ -93,7 +93,7 @@ public class ConstructorInjetionRecipeTest implements RewriteTest {
 				    public interface OwnerRepository{}
 				""";
 
-        Recipe recipe = new ConstructorInjectionRecipe("ownerRepository", "com.example.demo.A");
+        Recipe recipe = new ConstructorInjectionRecipe("com.example.test.OwnerRepository", "ownerRepository", "com.example.demo.A");
         runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
 	}
 	
@@ -151,7 +151,7 @@ public class ConstructorInjetionRecipeTest implements RewriteTest {
 				    public interface OwnerRepository{}
 				""";
 
-        Recipe recipe = new ConstructorInjectionRecipe("ownerRepository", "com.example.demo.A");
+        Recipe recipe = new ConstructorInjectionRecipe("com.example.test.OwnerRepository", "ownerRepository", "com.example.demo.A");
         runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
 	}
 	
@@ -215,7 +215,7 @@ public class ConstructorInjetionRecipeTest implements RewriteTest {
 				    public interface OwnerRepository{}
 				""";
 
-        Recipe recipe = new ConstructorInjectionRecipe("ownerRepository", "com.example.demo.A");
+        Recipe recipe = new ConstructorInjectionRecipe("com.example.test.OwnerRepository", "ownerRepository", "com.example.demo.A");
         runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
 	}
 	
@@ -279,7 +279,7 @@ public class ConstructorInjetionRecipeTest implements RewriteTest {
 				    public interface OwnerRepository{}
 				""";
 
-        Recipe recipe = new ConstructorInjectionRecipe("ownerRepository", "com.example.demo.A");
+        Recipe recipe = new ConstructorInjectionRecipe("com.example.test.OwnerRepository", "ownerRepository", "com.example.demo.A");
         runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
 	}
 	
