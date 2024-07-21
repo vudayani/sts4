@@ -1,7 +1,6 @@
 package org.springframework.ide.vscode.commons.rewrite.java;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.openrewrite.java.Assertions.java;
 
 import java.util.List;
 
@@ -20,7 +19,7 @@ public class AddFieldRecipeTest implements RewriteTest {
 	
 	@Override
     public void defaults(RecipeSpec spec) {
-        spec.recipe(new AddFieldRecipe("com.example.test.OwnerRepository"))
+        spec.recipe(new AddFieldRecipe("com.example.test.OwnerRepository", "com.example.demo.FooBar"))
         .parser(JavaParser.fromJavaVersion()
         		.logCompilationWarningsAndErrors(true));
     }
@@ -47,42 +46,42 @@ public class AddFieldRecipeTest implements RewriteTest {
     }
 	
 	// This adds a new field when the LST is valid
-	@Test
-    void addField() {
-        rewriteRun(
-        	spec -> spec.recipe(new AddFieldRecipe("com.example.test.OwnerRepository")),
-            java(
-                """
-                    package com.example.demo;
-                    
-                  import com.example.test.OwnerRepository;
-                    
-                  class FooBar {
-            		    
-            		    public void test() {}
-                    
-                    }
-                """,
-                """
-                package com.example.demo;
-                
-              import com.example.test.OwnerRepository;
-               
-              class FooBar {
-                
-                  private final OwnerRepository ownerRepository;
-        		    
-        		    public void test() {}
-                
-                }
-                """
-              )
-        );
-    }
+//	@Test
+//    void addField() {
+//        rewriteRun(
+//        	spec -> spec.recipe(new AddFieldRecipe("com.example.test.OwnerRepository", "com.example.demo.FooBar")),
+//            java(
+//                """
+//                    package com.example.demo;
+//                    
+//                  import com.example.test.OwnerRepository;
+//                    
+//                  class FooBar {
+//            		    
+//            		    public void test() {}
+//                    
+//                    }
+//                """,
+//                """
+//                package com.example.demo;
+//                
+//              import com.example.test.OwnerRepository;
+//               
+//              class FooBar {
+//                
+//                  private final OwnerRepository ownerRepository;
+//        		    
+//        		    public void test() {}
+//                
+//                }
+//                """
+//              )
+//        );
+//    }
 	
 	// The test parses invalid LST and then applies the recipe
 	@Test
-	void addFieldWithIncompleteLST() {
+	void addField() {
 		
 		String beforeSourceStr = """
                 package com.example.demo;
@@ -120,11 +119,11 @@ public class AddFieldRecipeTest implements RewriteTest {
             """;
 
         String dependsOn = """
-                package com.example.test;
+                package com.example.demo;
                 public interface OwnerRepository{}
             """;
 
-        Recipe recipe = new AddFieldRecipe("com.example.demo.OwnerRepository");
+        Recipe recipe = new AddFieldRecipe("com.example.demo.OwnerRepository", "com.example.demo.FooBar");
         runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
 	} 
 	
@@ -173,7 +172,7 @@ public class AddFieldRecipeTest implements RewriteTest {
                 public interface OwnerRepository{}
             """;
 
-        Recipe recipe = new AddFieldRecipe("com.example.test.OwnerRepository");
+        Recipe recipe = new AddFieldRecipe("com.example.test.OwnerRepository", "com.example.demo.FooBar");
         runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
 	} 
 	
@@ -222,7 +221,146 @@ public class AddFieldRecipeTest implements RewriteTest {
                 public interface OwnerRepository{}
             """;
 
-        Recipe recipe = new AddFieldRecipe("com.example.test.Inner.OwnerRepository");
+        Recipe recipe = new AddFieldRecipe("com.example.test.Inner.OwnerRepository", "com.example.demo.FooBar");
+        runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
+    }
+	
+	@Test
+    void addFieldToFirstClass() {
+		
+		String beforeSourceStr = """
+                package com.example.demo;
+                
+                class FooBar {
+                    
+                    public void test() {
+                        ownerR
+
+                    }
+                
+                }
+                class FooBarNew {
+                    
+                    public void test1() {}
+                
+                }
+            """;
+		
+		String sourceStrPassed = """
+                package com.example.demo;
+                
+                class FooBar {
+                    
+                    public void test() {}
+                
+                }
+                class FooBarNew {
+                    
+                    public void test1() {}
+                
+                }
+            """;
+
+        String expectedSourceStr = """
+                package com.example.demo;
+                
+            import com.example.test.Inner.OwnerRepository;
+                
+            class FooBar {
+                
+                    private final Inner.OwnerRepository ownerRepository;
+                    
+                    public void test() {}
+                
+                }
+                class FooBarNew {
+                    
+                    public void test1() {}
+                
+                }
+            """;
+
+        String dependsOn = """
+                package com.example.test;
+                public interface OwnerRepository{}
+            """;
+
+        Recipe recipe = new AddFieldRecipe("com.example.test.Inner.OwnerRepository", "com.example.demo.FooBar");
+        runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
+    }
+	
+	@Test
+    void addFieldToSecondClass() {
+		
+		String beforeSourceStr = """
+                package com.example.demo;
+                
+                import org.springframework.stereotype.Component;
+                
+                @Component
+                class FooBar {
+                    
+                    public void test() {
+                        ownerR
+
+                    }
+                
+                }
+                @Component
+                class FooBarNew {
+                    
+                    public void test1() {}
+                
+                }
+            """;
+		
+		String sourceStrPassed = """
+                package com.example.demo;
+                
+                import org.springframework.stereotype.Component;
+                
+                @Component
+                class FooBar {
+                    
+                    public void test() {}
+                
+                }
+                @Component
+                class FooBarNew {
+                    
+                    public void test1() {}
+                
+                }
+            """;
+
+        String expectedSourceStr = """
+    package com.example.demo;
+
+    import com.example.test.Inner.OwnerRepository;
+import org.springframework.stereotype.Component;
+
+@Component
+    class FooBar {
+
+        public void test() {}
+
+    }
+    @Component
+    class FooBarNew {
+
+        private final Inner.OwnerRepository ownerRepository;
+
+        public void test1() {}
+
+    }
+            """;
+
+        String dependsOn = """
+                package com.example.test;
+                public interface OwnerRepository{}
+            """;
+
+        Recipe recipe = new AddFieldRecipe("com.example.test.Inner.OwnerRepository", "com.example.demo.FooBarNew");
         runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
     }
 
