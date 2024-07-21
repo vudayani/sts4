@@ -29,17 +29,19 @@ public class BeanCompletionProposal implements ICompletionProposal {
 	private IDocument doc;
 	private String label;
 	private String detail;
+	private String className;
 	private Renderable documentation;
 	private RewriteRefactorings rewriteRefactorings;
 
 	private Gson gson;
 
-	public BeanCompletionProposal(DocumentEdits edits, IDocument doc, String label, String detail,
+	public BeanCompletionProposal(DocumentEdits edits, IDocument doc, String label, String detail, String className,
 			Renderable documentation, RewriteRefactorings rewriteRefactorings) {
 		this.edits = edits;
 		this.doc = doc;
 		this.label = label;
 		this.detail = detail;
+		this.className = className;
 		this.documentation = documentation;
 		this.rewriteRefactorings = rewriteRefactorings;
 		this.gson = new GsonBuilder()
@@ -84,7 +86,7 @@ public class BeanCompletionProposal implements ICompletionProposal {
 //					.withParameters(Map.of("fieldName", this.label, "classFqName","org.springframework.samples.petclinic.owner.TestController"))
 //					.withRecipeScope(RecipeScope.NODE);
 		FixDescriptor f = new FixDescriptor("com.vmware.tanzu.spring.framework.InjectBeanCompletionRecipe", List.of(this.doc.getUri()),"Inject bean completions")
-				.withParameters(Map.of("fullyQualifiedName", this.detail, "fieldName", this.label, "classFqName","org.springframework.samples.petclinic.owner.TestController"))
+				.withParameters(Map.of("fullyQualifiedName", this.detail, "fieldName", this.label, "classFqName",this.className))
 				.withRecipeScope(RecipeScope.NODE);
 		JsonElement jsonElement = gson.toJsonTree(f);
 		CompletableFuture<WorkspaceEdit> workspaceEdits = this.rewriteRefactorings.createEdit(jsonElement);
