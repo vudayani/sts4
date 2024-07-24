@@ -55,6 +55,7 @@ import org.springframework.ide.vscode.boot.java.requestmapping.LiveAppURLSymbolP
 import org.springframework.ide.vscode.boot.java.requestmapping.RequestMappingHoverProvider;
 import org.springframework.ide.vscode.boot.java.requestmapping.WebfluxHandlerCodeLensProvider;
 import org.springframework.ide.vscode.boot.java.requestmapping.WebfluxRouteHighlightProdivder;
+import org.springframework.ide.vscode.boot.java.spel.QueryCodeLensProvider;
 import org.springframework.ide.vscode.boot.java.utils.CompilationUnitCache;
 import org.springframework.ide.vscode.boot.java.utils.SpringLiveChangeDetectionWatchdog;
 import org.springframework.ide.vscode.boot.java.value.ValueHoverProvider;
@@ -307,6 +308,7 @@ public class BootJavaLanguageServerComponents implements LanguageServerComponent
 	protected BootJavaCodeLensEngine createCodeLensEngine(SpringSymbolIndex index) {
 		Collection<CodeLensProvider> codeLensProvider = new ArrayList<>();
 		codeLensProvider.add(new WebfluxHandlerCodeLensProvider(index));
+		codeLensProvider.add(new QueryCodeLensProvider());
 
 		return new BootJavaCodeLensEngine(this, codeLensProvider);
 	}

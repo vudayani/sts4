@@ -7,8 +7,7 @@ import {
     workspace,
     ExtensionContext,
     Uri,
-    lm
- } from 'vscode';
+    lm } from 'vscode';
 
 import * as commons from '@pivotal-tools/commons-vscode';
 import * as liveHoverUi from './live-hover-connect-ui';
@@ -27,6 +26,7 @@ import { SpringCli } from './copilot/springCli';
 import { applyLspEdit } from "./copilot/guideApply";
 import { isLlmApiReady } from "./copilot/util";
 import CopilotRequest, { logger } from "./copilot/copilotRequest";
+import * as copilotResultsRenderer from "./copilot/copilotResultsRenderer";
 
 const PROPERTIES_LANGUAGE_ID = "spring-boot-properties";
 const YAML_LANGUAGE_ID = "spring-boot-properties-yaml";
@@ -44,7 +44,7 @@ export function activate(context: ExtensionContext): Thenable<ExtensionAPI> {
     // registerPipelineGenerator(context);
     let options : commons.ActivatorOptions = {
         DEBUG: false,
-        CONNECT_TO_LS: false,
+        CONNECT_TO_LS: true,
         extensionId: 'vscode-spring-boot',
         preferJdk: true,
         jvmHeap: '1024m',
@@ -166,8 +166,11 @@ export function activate(context: ExtensionContext): Thenable<ExtensionAPI> {
         rewrite.activate(client, options, context);
         setLogLevelUi.activate(client, options, context);
         startPropertiesConversionSupport(context);
-        if(isLlmApiReady)
+        copilotResultsRenderer.activate(context);
+        if(isLlmApiReady) {
             activateSpringBootParticipant(context);
+            // spelExpressionsExplain(context);
+        }
         else 
             window.showInformationMessage("Spring Boot chat participant is not available. Please use the vscode insiders version 1.90.0 or above and make sure all `lm` API is enabled.");
 
@@ -212,3 +215,24 @@ async function activateSpringBootParticipant(context: ExtensionContext) {
     }
     springBootAgent.activate(context);
 }
+// async function spelExpressionsExplain(context: ExtensionContext) {
+//     commands.registerCommand('vscode-spring-boot.query.explain', async (userPrompt, range: Range) => {
+//         console.log('spel.explain: ' + userPrompt);
+//         window.showInformationMessage('spel.explain executed');
+//         const systemPrompts: LanguageModelChatMessage[] = [
+//             new LanguageModelChatMessage(LanguageModelChatMessageRole.User, "Your task is to explain the user query in detail."),
+//             new LanguageModelChatMessage(LanguageModelChatMessageRole.User, "IMPORTANT: CONCLUDE YOUR RESPONSE WITH THE MARKER \"<|endofresponse|>\"  TO INDICATE END OF RESPONSE")
+//         ];
+//         const messages = [
+//             LanguageModelChatMessage.User(userPrompt)
+//         ];
+//         const copilotRequest = new CopilotRequest(systemPrompts);
+//         const response = await copilotRequest.chatRequest(messages, {}, null);
+//         console.log(response);
+
+//         copilotResultsProvider.updateResults([response]);
+        
+//         window.showInformationMessage('Response: '+ response);
+//     })
+// }
+

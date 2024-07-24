@@ -266,6 +266,11 @@
         "title": "Apply Changes",
         "category": "Spring Boot Agent",
         "enablement": "false"
+      },
+      {
+        "command": "vscode-spring-boot.query.explain",
+        "title": "Explain Spel Expressions",
+        "category": "Spring Boot"
       }
     ],
     "configuration": [
@@ -1269,7 +1274,24 @@
         "scopeName": "source.spring-factories",
         "path": "./properties-support/spring-factories.tmLanguage.json"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "copilotResultsViewContainer",
+          "title": "Copilot Query Results",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "copilotResultsViewContainer": [
+        {
+          "id": "copilotResultsPanel",
+          "name": "Copilot Query Results"
+        }
+      ]
+    }
   },
   "main": "./out/lib/Main",
   "scripts": {
