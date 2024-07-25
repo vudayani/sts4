@@ -104,7 +104,7 @@ public class TestBeanCompletionClass {
     }
 
 		public void test() {
-owner<*>
+ownerRepository<*>
 		}
 }	    
 									""");
@@ -134,7 +134,7 @@ public class TestBeanCompletionClass {
     }
 
 		public void test() {
-owner<*>
+ownerService<*>
 		}
 }	    
 									""");
@@ -159,7 +159,7 @@ public class TestBeanCompletionClass {
     }
 
 		public void test() {
-pet<*>
+petService<*>
 		}
 }	    
 									""");

@@ -61,6 +61,7 @@ public class BeanCompletionProvider implements CompletionProvider {
 				for (Bean bean : beans) {
 					if (FuzzyMatcher.matchScore(node.toString(), bean.getName()) != 0.0) {
 						DocumentEdits edits = new DocumentEdits(doc, false);
+						edits.replace(offset - node.toString().length(), offset, bean.getName());
 						BeanCompletionProposal proposal = new BeanCompletionProposal(edits, doc, bean.getName(),
 								bean.getType(),className, null, rewriteRefactorings);
 						completions.add(proposal);
