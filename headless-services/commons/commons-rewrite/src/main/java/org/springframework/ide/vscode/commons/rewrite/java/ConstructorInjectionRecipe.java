@@ -115,11 +115,9 @@ public class ConstructorInjectionRecipe extends Recipe {
 				ClassDeclaration c = blockCursor.getParent().getValue();
 				TypeTree fieldType = TypeTree.build(fullyQualifiedName);
 				if (constructor == null) {
-					doAfterVisit(
-							new AddConstructorVisitor(c.getSimpleName(), fieldName, fieldType));
+					doAfterVisit(new AddConstructorVisitor(c.getSimpleName(), fieldName, fieldType));
 				} else {
-					doAfterVisit(new AddConstructorParameterAndAssignment(constructor, fieldName,
-							fieldType));
+					doAfterVisit(new AddConstructorParameterAndAssignment(constructor, fieldName,fieldType));
 				}
 			}
 			return mv;
@@ -146,7 +144,7 @@ public class ConstructorInjectionRecipe extends Recipe {
                     JavaType.FullyQualified typeFqn = TypeUtils.asFullyQualified(type.getType());
                     if (typeFqn != null && classDecl.getKind() == ClassDeclaration.Kind.Type.Class && className.equals(classDecl.getSimpleName())) {
                         JavaTemplate.Builder template = JavaTemplate.builder(""
-                                + classDecl.getSimpleName() + "(" + typeFqn.getClassName() + " " + fieldName + ") {\n"
+                                + classDecl.getSimpleName() + "(" + getFieldType(typeFqn) + " " + fieldName + ") {\n"
                                 + "this." + fieldName + " = " + fieldName + ";\n"
                                 + "}\n"
                         ).contextSensitive();
@@ -187,7 +185,7 @@ public class ConstructorInjectionRecipe extends Recipe {
             this.fieldName = fieldName;
             JavaType.FullyQualified fq = TypeUtils.asFullyQualified(type.getType());
             if (fq != null) {
-                methodType = fq.getClassName();
+                methodType = getFieldType(fq);
             } else {
                 throw new IllegalArgumentException("Unable to determine parameter type");
             }
@@ -222,5 +220,17 @@ public class ConstructorInjectionRecipe extends Recipe {
             }
             return md;
         }
+    }
+
+    private static String getFieldType(JavaType.FullyQualified fullyQualifiedType) {
+		if(fullyQualifiedType.getOwningClass() != null) {
+			String[] parts = fullyQualifiedType.getFullyQualifiedName().split("\\.");
+	        if (parts.length < 2) {
+	            return fullyQualifiedType.getClassName();
+	        }
+	        return parts[parts.length - 2] + "." + parts[parts.length - 1];
+		}
+			
+        return fullyQualifiedType.getClassName();
     }
 }
