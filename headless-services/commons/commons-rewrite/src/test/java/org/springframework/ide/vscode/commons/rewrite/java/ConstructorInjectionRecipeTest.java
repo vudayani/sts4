@@ -1,7 +1,6 @@
 package org.springframework.ide.vscode.commons.rewrite.java;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.openrewrite.java.Assertions.java;
 
 import java.util.List;
 
@@ -16,7 +15,7 @@ import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 import org.openrewrite.tree.ParseError;
 
-public class ConstructorInjetionRecipeTest implements RewriteTest {
+public class ConstructorInjectionRecipeTest implements RewriteTest {
 
 	@Override
 	public void defaults(RecipeSpec spec) {
@@ -46,7 +45,7 @@ public class ConstructorInjetionRecipeTest implements RewriteTest {
     }
 	
 	@Test
-	void fieldIntoNewConstructor() {
+	void injectFieldIntoNewConstructor() {
 		
 		String beforeSourceStr = """
               package com.example.demo;
@@ -98,7 +97,7 @@ public class ConstructorInjetionRecipeTest implements RewriteTest {
 	}
 	
 	@Test
-	void fieldIntoExistingSingleConstructor() {
+	void injectFieldIntoExistingSingleConstructor() {
 		
 		String beforeSourceStr = """
               package com.example.demo;
@@ -156,7 +155,7 @@ public class ConstructorInjetionRecipeTest implements RewriteTest {
 	}
 	
 	@Test
-	void fieldIntoAutowiredConstructor() {
+	void injectFieldIntoAutowiredConstructor() {
 		
 		String beforeSourceStr = """
               package com.example.demo;
@@ -220,7 +219,7 @@ public class ConstructorInjetionRecipeTest implements RewriteTest {
 	}
 	
 	@Test
-	void fieldIntoExistingConstructorWithFields() {
+	void injectFieldIntoExistingConstructorWithFields() {
 		
 		String beforeSourceStr = """
               package com.example.demo;
@@ -257,21 +256,21 @@ public class ConstructorInjetionRecipeTest implements RewriteTest {
             """;
 
         String expectedSourceStr = """
-              package com.example.demo;
-                
-              import com.example.test.OwnerRepository;
-              
-              public class A {
-              
-                  String a;
-                  
-                  private final OwnerRepository ownerRepository;
-                  
-                  A(String a, OwnerRepository ownerRepository) {
-					this.a = a;
-					this.ownerRepository = ownerRepository;        		                    		            
-				  }
-              }
+         package com.example.demo;
+
+         import com.example.test.OwnerRepository;
+
+         public class A {
+
+             String a;
+
+             private final OwnerRepository ownerRepository;
+
+             A(String a, OwnerRepository ownerRepository) {
+this.a = a;
+                 this.ownerRepository = ownerRepository;
+ }
+         }
             """;
 
 		String dependsOn = """
@@ -280,6 +279,126 @@ public class ConstructorInjetionRecipeTest implements RewriteTest {
 				""";
 
         Recipe recipe = new ConstructorInjectionRecipe("com.example.test.OwnerRepository", "ownerRepository", "com.example.demo.A");
+        runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
+	}
+	
+	@Test
+	void injectInnerClassFieldIntoExistingConstructorWithFields() {
+		
+		String beforeSourceStr = """
+              package com.example.demo;
+                
+              import com.example.test.Inner.OwnerRepository;
+              
+              public class A {
+              
+                  String a;
+                  
+                  private final Inner.OwnerRepository ownerRepository;
+                  
+                  A(String a) {
+					this.a = a;
+				  }
+              }
+            """;
+		
+		String sourceStrPassed = """
+              package com.example.demo;
+                
+              import com.example.test.Inner.OwnerRepository;
+              
+              public class A {
+              
+                  String a;
+                  
+                  private final Inner.OwnerRepository ownerRepository;
+                  
+                  A(String a) {
+					this.a = a;
+				  }
+              }
+            """;
+
+        String expectedSourceStr = """
+         package com.example.demo;
+
+         import com.example.test.Inner.OwnerRepository;
+
+         public class A {
+
+             String a;
+
+             private final Inner.OwnerRepository ownerRepository;
+
+             A(String a, Inner.OwnerRepository ownerRepository) {
+this.a = a;
+                 this.ownerRepository = ownerRepository;
+ }
+         }
+            """;
+
+		String dependsOn = """
+				    package com.example.test;
+				    public class Inner {
+				    	public static class OwnerRepository{}
+				    }    
+				""";
+
+        Recipe recipe = new ConstructorInjectionRecipe("com.example.test.Inner.OwnerRepository", "ownerRepository", "com.example.demo.A");
+        runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
+	}
+	
+	@Test
+	void injectInnerClassFieldIntoNewConstructor() {
+		
+		String beforeSourceStr = """
+              package com.example.demo;
+                
+              import com.example.test.Inner.OwnerRepository;
+              
+              public class A {
+              
+                  private final Inner.OwnerRepository ownerRepository;
+              
+              }
+            """;
+		
+		String sourceStrPassed = """
+              package com.example.demo;
+                
+              import com.example.test.Inner.OwnerRepository;
+              
+              public class A {
+              
+                  private final Inner.OwnerRepository ownerRepository;
+              
+              }
+            """;
+
+        String expectedSourceStr = """
+              package com.example.demo;
+                
+              import com.example.test.Inner.OwnerRepository;
+
+              public class A {
+              
+                  private final Inner.OwnerRepository ownerRepository;
+                  
+                  A(Inner.OwnerRepository ownerRepository) {
+                      this.ownerRepository = ownerRepository;
+                  }
+              
+              }
+            """;
+
+        String dependsOn = """
+			    package com.example.test;
+			    public class Inner {
+			    	public static class OwnerRepository{}
+			    }    
+			""";
+
+        Recipe recipe = new ConstructorInjectionRecipe("com.example.test.Inner.OwnerRepository", "ownerRepository", "com.example.demo.A");
         runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
 	}
 	
