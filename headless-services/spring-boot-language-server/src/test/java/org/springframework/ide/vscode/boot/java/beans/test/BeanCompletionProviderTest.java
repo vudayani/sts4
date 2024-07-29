@@ -166,6 +166,71 @@ petService<*>
 	}
 	
 	@Test
+	public void testBeanCompletion_multipleClasses() throws Exception {
+		String content = """
+				package org.sample.test;
+				
+				import org.springframework.samples.petclinic.owner.OwnerRepository;
+				import org.springframework.stereotype.Controller;
+				
+				@Controller
+				public class TestBeanCompletionClass {
+				    private final OwnerRepository ownerRepository;
+				
+				    TestBeanCompletionClass(OwnerRepository ownerRepository) {
+				        this.ownerRepository = ownerRepository;
+				    }
+						
+						public void test() {
+						}
+				}
+				
+				@Controller
+				public class TestBeanCompletionSecondClass {
+						
+						public void test() {
+						 owner<*>
+						}
+				}
+				""";
+		
+		assertCompletions(content, new String[] {"ownerRepository", "ownerService"}, 1, 
+				"""
+package org.sample.test;
+
+import org.springframework.samples.petclinic.owner.OwnerRepository;
+import org.springframework.samples.petclinic.owner.OwnerService;
+import org.springframework.stereotype.Controller;
+
+@Controller
+public class TestBeanCompletionClass {
+    private final OwnerRepository ownerRepository;
+
+    TestBeanCompletionClass(OwnerRepository ownerRepository) {
+        this.ownerRepository = ownerRepository;
+    }
+
+		public void test() {
+		}
+}	  
+
+@Controller
+public class TestBeanCompletionSecondClass {
+
+    private final OwnerService ownerService;
+
+    TestBeanCompletionSecondClass(OwnerService ownerService) {
+        this.ownerService = ownerService;
+    }
+
+		public void test() {
+		 ownerService<*>
+		}
+}
+									""");
+	}
+	
+	@Test
 	public void testBeanCompletion_isNotSpringComponent() throws Exception {
 		String content = """
 				package org.sample.test;

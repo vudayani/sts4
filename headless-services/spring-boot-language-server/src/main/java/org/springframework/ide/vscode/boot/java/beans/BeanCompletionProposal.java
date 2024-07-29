@@ -13,8 +13,8 @@ import org.springframework.ide.vscode.commons.languageserver.completion.Document
 import org.springframework.ide.vscode.commons.languageserver.completion.ICompletionProposal;
 import org.springframework.ide.vscode.commons.rewrite.ORDocUtils;
 import org.springframework.ide.vscode.commons.rewrite.config.RecipeScope;
-import org.springframework.ide.vscode.commons.rewrite.java.ConstructorInjectionRecipe;
 import org.springframework.ide.vscode.commons.rewrite.java.FixDescriptor;
+import org.springframework.ide.vscode.commons.rewrite.java.InjectBeanCompletionRecipe;
 import org.springframework.ide.vscode.commons.util.Renderable;
 import org.springframework.ide.vscode.commons.util.text.IDocument;
 
@@ -29,18 +29,20 @@ public class BeanCompletionProposal implements ICompletionProposal {
 	private IDocument doc;
 	private String label;
 	private String detail;
+	private String fieldType;
 	private String className;
 	private Renderable documentation;
 	private RewriteRefactorings rewriteRefactorings;
 
 	private Gson gson;
 
-	public BeanCompletionProposal(DocumentEdits edits, IDocument doc, String label, String detail, String className,
+	public BeanCompletionProposal(DocumentEdits edits, IDocument doc, String label, String detail, String fieldType, String className,
 			Renderable documentation, RewriteRefactorings rewriteRefactorings) {
 		this.edits = edits;
 		this.doc = doc;
 		this.label = label;
 		this.detail = detail;
+		this.fieldType = fieldType;
 		this.className = className;
 		this.documentation = documentation;
 		this.rewriteRefactorings = rewriteRefactorings;
@@ -85,20 +87,22 @@ public class BeanCompletionProposal implements ICompletionProposal {
 //		FixDescriptor f = new FixDescriptor(ConstructorInjectionRecipe.class.getName(), List.of(this.doc.getUri()),"Inject bean completions")
 //					.withParameters(Map.of("fieldName", this.label, "classFqName","org.springframework.samples.petclinic.owner.TestController"))
 //					.withRecipeScope(RecipeScope.NODE);
-		FixDescriptor f = new FixDescriptor("com.vmware.tanzu.spring.framework.InjectBeanCompletionRecipe", List.of(this.doc.getUri()),"Inject bean completions")
-				.withParameters(Map.of("fullyQualifiedName", this.detail, "fieldName", this.label, "classFqName",this.className))
-				.withRecipeScope(RecipeScope.NODE);
-		JsonElement jsonElement = gson.toJsonTree(f);
-		CompletableFuture<WorkspaceEdit> workspaceEdits = this.rewriteRefactorings.createEdit(jsonElement);
-
-		CompletableFuture<Optional<DocumentEdits>> docEditsFuture = workspaceEdits.thenApply(workspaceEdit -> {
-			Optional<DocumentEdits> docEdits = ORDocUtils.computeDocumentEdits(workspaceEdit, doc);
-			return docEdits;
-
-		});
-
+		
+//		com.vmware.tanzu.spring.framework.InjectBeanCompletionRecipe
+		
 		return Optional.of(() -> {
 			try {
+				FixDescriptor f = new FixDescriptor(InjectBeanCompletionRecipe.class.getName(), List.of(this.doc.getUri()),"Inject bean completions")
+						.withParameters(Map.of("fullyQualifiedName", this.fieldType, "fieldName", this.label, "classFqName",this.className))
+						.withRecipeScope(RecipeScope.NODE);
+				JsonElement jsonElement = gson.toJsonTree(f);
+				CompletableFuture<WorkspaceEdit> workspaceEdits = this.rewriteRefactorings.createEdit(jsonElement);
+
+				CompletableFuture<Optional<DocumentEdits>> docEditsFuture = workspaceEdits.thenApply(workspaceEdit -> {
+					Optional<DocumentEdits> docEdits = ORDocUtils.computeDocumentEdits(workspaceEdit, doc);
+					return docEdits;
+
+				});
 				if (docEditsFuture != null && !docEditsFuture.isDone()) {
 					Optional<DocumentEdits> docEdits = docEditsFuture.get();
 					return docEdits.orElse(null);

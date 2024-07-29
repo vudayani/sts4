@@ -113,11 +113,13 @@ public class ConstructorInjectionRecipe extends Recipe {
 				}
 				MethodDeclaration constructor = blockCursor.getParent().getMessage("applicableConstructor");
 				ClassDeclaration c = blockCursor.getParent().getValue();
-				TypeTree fieldType = TypeTree.build(fullyQualifiedName);
+
+				JavaType.FullyQualified fullyQualifiedType = JavaType.ShallowClass.build(fullyQualifiedName);
+				TypeTree fieldType = TypeTree.build(fullyQualifiedType.toString());
 				if (constructor == null) {
 					doAfterVisit(new AddConstructorVisitor(c.getSimpleName(), fieldName, fieldType));
 				} else {
-					doAfterVisit(new AddConstructorParameterAndAssignment(constructor, fieldName,fieldType));
+					doAfterVisit(new AddConstructorParameterAndAssignment(constructor, fieldName, fieldType));
 				}
 			}
 			return mv;
