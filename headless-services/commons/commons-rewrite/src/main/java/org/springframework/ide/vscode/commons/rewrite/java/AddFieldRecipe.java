@@ -54,22 +54,23 @@ public class AddFieldRecipe extends Recipe {
 			private final JavaTemplate fieldTemplate = JavaTemplate.builder("private final %s %s;"
 					.formatted(fieldType, fieldName))
 					.javaParser(JavaParser.fromJavaVersion()
-//							.dependsOn(
-//								"""
-//								package %s;
-//								
-//								public interface %s {}
-//								""".formatted(fullyQualifiedType.getPackageName(), fullyQualifiedType.getClassName()),
-//								"""
-//								package %s;
-//								
-//								public class A {
-//									public class %s {
-//										
-//									}
-//								}
-//								""".formatted(fullyQualifiedType.getPackageName(), fullyQualifiedType.getClassName()))
+							.dependsOn(
+								"""
+								package %s;
+								
+								public interface %s {}
+								""".formatted(fullyQualifiedType.getPackageName(), fullyQualifiedType.getClassName()),
+								"""
+								package %s;
+								
+								public class A {
+									public class %s {
+										
+									}
+								}
+								""".formatted(fullyQualifiedType.getPackageName(), fullyQualifiedType.getClassName()))
 							)
+					.imports(fullyQualifiedType.getFullyQualifiedName())
 					.contextSensitive()
 					.build();
 

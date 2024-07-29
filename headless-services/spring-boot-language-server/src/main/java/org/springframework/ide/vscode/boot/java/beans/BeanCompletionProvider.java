@@ -1,6 +1,5 @@
 package org.springframework.ide.vscode.boot.java.beans;
 
-import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.Optional;
 
@@ -54,7 +53,7 @@ public class BeanCompletionProvider implements CompletionProvider {
 	        if (topLevelClass == null) {
 	            return;
 	        }
-
+	        
 			if (node instanceof SimpleName && isSpringComponent(topLevelClass)) {
 	            String className = getFullyQualifiedName(topLevelClass);
 				Bean[] beans = this.springIndex.getBeansOfProject(project.getElementName());
@@ -63,7 +62,7 @@ public class BeanCompletionProvider implements CompletionProvider {
 						DocumentEdits edits = new DocumentEdits(doc, false);
 						edits.replace(offset - node.toString().length(), offset, bean.getName());
 						BeanCompletionProposal proposal = new BeanCompletionProposal(edits, doc, bean.getName(),
-								bean.getType(),className, null, rewriteRefactorings);
+								"Autowire bean", bean.getType(), className, null, rewriteRefactorings);
 						completions.add(proposal);
 					}
 				}
@@ -74,17 +73,25 @@ public class BeanCompletionProvider implements CompletionProvider {
 	}
 	
 	private static boolean isSpringComponent(TypeDeclaration node) {		
-		for (IAnnotationBinding annotation : node.resolveBinding().getAnnotations()) {
-            String annotationName = annotation.getAnnotationType().getQualifiedName();
-            if (annotationName.equals("org.springframework.stereotype.Component") ||
-                annotationName.equals("org.springframework.stereotype.Service") ||
-                annotationName.equals("org.springframework.stereotype.Repository") ||
-                annotationName.equals("org.springframework.stereotype.Controller") ||
-                annotationName.equals("org.springframework.context.annotation.Configuration")) {
-                return true;
-            }
-        }
-        return false;
+	    for (IAnnotationBinding annotation : node.resolveBinding().getAnnotations()) {
+	        if (isSpringComponentAnnotation(annotation)) {
+	            return true;
+	        }
+	    }
+	    return false;
+	}
+
+	private static boolean isSpringComponentAnnotation(IAnnotationBinding annotation) {
+	    String annotationName = annotation.getAnnotationType().getQualifiedName();
+	    if (annotationName.equals("org.springframework.stereotype.Component")) {
+	        return true;
+	    }
+	    for (IAnnotationBinding metaAnnotation : annotation.getAnnotationType().getAnnotations()) {
+	        if (metaAnnotation.getAnnotationType().getQualifiedName().equals("org.springframework.stereotype.Component")) {
+	            return true;
+	        }
+	    }
+	    return false;
 	}
 	
 	private static TypeDeclaration findTopLevelClass(ASTNode node) {
