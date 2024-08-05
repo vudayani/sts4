@@ -6,7 +6,7 @@ export default class CopilotRequest {
 
     public static readonly DEFAULT_END_MARK = '<|endofresponse|>';
     public static readonly DEFAULT_MAX_ROUNDS = 2;
-    public static readonly DEFAULT_MODEL_SELECTOR: LanguageModelChatSelector = { vendor: 'copilot', family: 'gpt-3.5-turbo' };
+    public static readonly DEFAULT_MODEL_SELECTOR: LanguageModelChatSelector = { vendor: 'copilot', family: 'gpt-4' };
     public static readonly DEFAULT_MODEL_OPTIONS: LanguageModelChatRequestOptions = { modelOptions: {} };
 
     public static readonly NOT_CANCELLABLE: CancellationToken = { isCancellationRequested: false, onCancellationRequested: () => Disposable.from() };

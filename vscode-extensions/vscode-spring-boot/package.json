@@ -409,6 +409,12 @@
             ],
             "scope": "window",
             "description": "Defines which browser to use when opening Spring Boot apps web pages."
+          },
+          "boot-java.highlight-copilot-codelens.on": {
+            "type": "boolean",
+            "default": false,
+            "description": "Explain SpEL Expressions and queries using Copilot",
+            "scope": "application"
           }
         }
       },

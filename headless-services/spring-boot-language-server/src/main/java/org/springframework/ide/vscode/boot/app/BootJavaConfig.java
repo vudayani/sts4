@@ -203,6 +203,10 @@ public class BootJavaConfig implements InitializingBean {
 		return settings.getStringSet("boot-java", "rewrite", "scan-files");
 	}
 	
+	public boolean getCopilotCodeLensesSetting() {
+		return settings.getBoolean("boot-java", "highlight-copilot-codelens", "on");
+	}
+	
 	public Path getCommonPropertiesFile() {
 		String str = settings.getString("boot-java", "common", "properties-metadata");
 		return str == null || str.isBlank() ? null : Paths.get(str);

@@ -2,6 +2,7 @@ package org.springframework.ide.vscode.boot.java.spel;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Annotation;
@@ -13,8 +14,12 @@ import org.eclipse.jdt.core.dom.SingleMemberAnnotation;
 import org.eclipse.lsp4j.CodeLens;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
+import org.springframework.ide.vscode.boot.app.BootJavaConfig;
 import org.springframework.ide.vscode.boot.java.handlers.CodeLensProvider;
 import org.springframework.ide.vscode.boot.java.spel.AnnotationParamSpelExtractor.Snippet;
+import org.springframework.ide.vscode.commons.java.IJavaProject;
+import org.springframework.ide.vscode.commons.java.SpringProjectUtil;
+import org.springframework.ide.vscode.commons.languageserver.java.JavaProjectFinder;
 import org.springframework.ide.vscode.commons.util.BadLocationException;
 import org.springframework.ide.vscode.commons.util.text.TextDocument;
 
@@ -27,14 +32,33 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 
 	private static final String QUERY = "Query";
 	private static final String FQN_QUERY = "org.springframework.data.jpa.repository." + QUERY;
-	private static final String SPEL_EXPRESSION_QUERY = "Explain the following SpEL Expression in detail: \n";
-    private static final String JPQL_QUERY = "Explain the following query in detail. If the query contains any SpEL expressions, explain those parts as well: \n";
+	private static final String SPEL_EXPRESSION_QUERY_PROMPT = "Explain the following SpEL Expression in detail: \n";
+    private static final String JPQL_QUERY_PROMPT = "Explain the following JPQL query in detail. If the query contains any SpEL expressions, explain those parts as well: \n";
+    private static final String HQL_QUERY_PROMPT = "Explain the following HQL query in detail. If the query contains any SpEL expressions, explain those parts as well: \n";
+    private static final String DEFAULT_QUERY_PROMPT = "Explain the following query in detail: \n";
     private static final String CMD = "vscode-spring-boot.query.explain";
+    private static final String EXPLAIN_SPEL_TITLE = "Explain Spel Expression using Copilot";
+    private static final String EXPLAIN_QUERY_TITLE = "Explain Query using Copilot";
+    
 	private final AnnotationParamSpelExtractor[] spelExtractors = AnnotationParamSpelExtractor.SPEL_EXTRACTORS;
+	
+	private final JavaProjectFinder projectFinder;
+	
+	private boolean showCodeLenses;
+	
+	public QueryCodeLensProvider(BootJavaConfig config, JavaProjectFinder projectFinder) {
+		this.projectFinder = projectFinder;
+		config.addListener(l -> {
+			showCodeLenses = config.getCopilotCodeLensesSetting();
+		});
+	}
 
 	@Override
 	public void provideCodeLenses(CancelChecker cancelToken, TextDocument document, CompilationUnit cu,
 			List<CodeLens> resultAccumulator) {
+		if(!showCodeLenses) {
+			return;
+		}
 		cu.accept(new ASTVisitor() {
 
 			@Override
@@ -45,7 +69,8 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 						});
 
 				if (isQueryAnnotation(node)) {
-					provideCodeLens(cancelToken, node, document, node.getValue(), resultAccumulator);
+					String queryPrompt = determineQueryPrompt(document);
+					provideCodeLens(cancelToken, node, document, node.getValue(), queryPrompt, resultAccumulator);
 				}
 
 				return super.visit(node);
@@ -59,11 +84,12 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 						});
 
 				if (isQueryAnnotation(node)) {
+					String queryPrompt = determineQueryPrompt(document);
 					for (Object value : node.values()) {
 						if (value instanceof MemberValuePair) {
 							MemberValuePair pair = (MemberValuePair) value;
 							if ("value".equals(pair.getName().getIdentifier())) {
-								provideCodeLens(cancelToken, node, document, pair.getValue(), resultAccumulator);
+								provideCodeLens(cancelToken, node, document, pair.getValue(), queryPrompt, resultAccumulator);
 								break;
 							}
 						}
@@ -86,9 +112,9 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 				codeLens.setRange(document.toRange(snippet.offset(), snippet.text().length()));
 
 				Command cmd = new Command();
-				cmd.setTitle("Explain Spel Expression using Copilot");
+				cmd.setTitle(EXPLAIN_SPEL_TITLE);
 				cmd.setCommand(CMD);
-				cmd.setArguments(ImmutableList.of(SPEL_EXPRESSION_QUERY + snippet.text(), document.toRange(snippet.offset(), snippet.text().length())));
+				cmd.setArguments(ImmutableList.of(SPEL_EXPRESSION_QUERY_PROMPT + snippet.text()));
 				codeLens.setCommand(cmd);
 
 				resultAccumulator.add(codeLens);
@@ -99,7 +125,7 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 	}
 
 	protected void provideCodeLens(CancelChecker cancelToken, Annotation node, TextDocument document,
-			Expression valueExp, List<CodeLens> resultAccumulator) {
+			Expression valueExp, String query, List<CodeLens> resultAccumulator) {
 		cancelToken.checkCanceled();
 
 		if (valueExp != null) {
@@ -109,9 +135,9 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 				codeLens.setRange(document.toRange(valueExp.getStartPosition(), valueExp.getLength()));
 
 				Command cmd = new Command();
-				cmd.setTitle("Explain Query using Copilot");
+				cmd.setTitle(EXPLAIN_QUERY_TITLE);
 				cmd.setCommand(CMD);
-				cmd.setArguments(ImmutableList.of(JPQL_QUERY + valueExp.toString(), document.toRange(valueExp.getStartPosition(), valueExp.getLength())));
+				cmd.setArguments(ImmutableList.of(query + valueExp.toString()));
 				codeLens.setCommand(cmd);
 
 				resultAccumulator.add(codeLens);
@@ -124,6 +150,15 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 	private static boolean isQueryAnnotation(Annotation a) {
 		return FQN_QUERY.equals(a.getTypeName().getFullyQualifiedName())
 				|| QUERY.equals(a.getTypeName().getFullyQualifiedName());
+	}
+	
+	private String determineQueryPrompt(TextDocument document) {
+	    Optional<IJavaProject> optProject = projectFinder.find(document.getId());
+	    if (optProject.isPresent()) {
+	        IJavaProject jp = optProject.get();
+	        return SpringProjectUtil.hasDependencyStartingWith(jp, "hibernate-core", null) ? HQL_QUERY_PROMPT : JPQL_QUERY_PROMPT;
+	    }
+	    return DEFAULT_QUERY_PROMPT;
 	}
 
 }

@@ -86,6 +86,6 @@ export async function writeResponseToFile(response: string, appName: string, sel
     }
 }
 
-export function isLlmApiReady(): boolean {
-    return version.includes('insider') && new SemVer(version).compare(new SemVer("1.90.0-insider")) >= 0;
+export function isLlmApiAvailable(v: string): boolean {
+    return new SemVer(version).compare(new SemVer(v)) >= 0;
 }
