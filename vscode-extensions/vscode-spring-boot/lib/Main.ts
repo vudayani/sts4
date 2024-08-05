@@ -6,8 +6,7 @@ import {
     window,
     workspace,
     ExtensionContext,
-    Uri,
-    lm } from 'vscode';
+    Uri} from 'vscode';
 
 import * as commons from '@pivotal-tools/commons-vscode';
 import * as liveHoverUi from './live-hover-connect-ui';
@@ -21,12 +20,9 @@ import {registerJavaDataService} from "@pivotal-tools/commons-vscode/lib/java-da
 import * as setLogLevelUi from './set-log-levels-ui';
 import { startTestJarSupport } from "./test-jar-launch";
 import { startPropertiesConversionSupport } from "./convert-props-yaml";
-import * as springBootAgent from './copilot/springBootAgent';
 import { SpringCli } from './copilot/springCli';
 import { applyLspEdit } from "./copilot/guideApply";
-import { isLlmApiReady } from "./copilot/util";
-import CopilotRequest, { logger } from "./copilot/copilotRequest";
-import * as copilotResultsRenderer from "./copilot/copilotResultsRenderer";
+import { activateCopilotFeatures } from "./copilot";
 
 const PROPERTIES_LANGUAGE_ID = "spring-boot-properties";
 const YAML_LANGUAGE_ID = "spring-boot-properties-yaml";
@@ -44,7 +40,7 @@ export function activate(context: ExtensionContext): Thenable<ExtensionAPI> {
     // registerPipelineGenerator(context);
     let options : commons.ActivatorOptions = {
         DEBUG: false,
-        CONNECT_TO_LS: true,
+        CONNECT_TO_LS: false,
         extensionId: 'vscode-spring-boot',
         preferJdk: true,
         jvmHeap: '1024m',
@@ -166,17 +162,12 @@ export function activate(context: ExtensionContext): Thenable<ExtensionAPI> {
         rewrite.activate(client, options, context);
         setLogLevelUi.activate(client, options, context);
         startPropertiesConversionSupport(context);
-        copilotResultsRenderer.activate(context);
-        if(isLlmApiReady) {
-            activateSpringBootParticipant(context);
-            // spelExpressionsExplain(context);
-        }
-        else 
-            window.showInformationMessage("Spring Boot chat participant is not available. Please use the vscode insiders version 1.90.0 or above and make sure all `lm` API is enabled.");
 
         registerMiscCommands(context);
 
         commands.registerCommand('vscode-spring-boot.agent.apply', applyLspEdit);
+
+        activateCopilotFeatures(context);
 
         return new ApiManager(client).api;
     });
@@ -205,34 +196,4 @@ function registerMiscCommands(context: ExtensionContext) {
         }),
     );
 }
-
-async function activateSpringBootParticipant(context: ExtensionContext) {
-    const model = (await lm.selectChatModels(CopilotRequest.DEFAULT_MODEL_SELECTOR))?.[0];
-    if (!model) {
-        const models = await lm.selectChatModels();
-        logger.error(`Not a suitable model. The available models are: [${models.map(m => m.name).join(', ')}]. Please make sure you have installed the latest "GitHub Copilot Chat" (v0.16.0 or later) and all \`lm\` API is enabled.`);
-        return;
-    }
-    springBootAgent.activate(context);
-}
-// async function spelExpressionsExplain(context: ExtensionContext) {
-//     commands.registerCommand('vscode-spring-boot.query.explain', async (userPrompt, range: Range) => {
-//         console.log('spel.explain: ' + userPrompt);
-//         window.showInformationMessage('spel.explain executed');
-//         const systemPrompts: LanguageModelChatMessage[] = [
-//             new LanguageModelChatMessage(LanguageModelChatMessageRole.User, "Your task is to explain the user query in detail."),
-//             new LanguageModelChatMessage(LanguageModelChatMessageRole.User, "IMPORTANT: CONCLUDE YOUR RESPONSE WITH THE MARKER \"<|endofresponse|>\"  TO INDICATE END OF RESPONSE")
-//         ];
-//         const messages = [
-//             LanguageModelChatMessage.User(userPrompt)
-//         ];
-//         const copilotRequest = new CopilotRequest(systemPrompts);
-//         const response = await copilotRequest.chatRequest(messages, {}, null);
-//         console.log(response);
-
-//         copilotResultsProvider.updateResults([response]);
-        
-//         window.showInformationMessage('Response: '+ response);
-//     })
-// }
 

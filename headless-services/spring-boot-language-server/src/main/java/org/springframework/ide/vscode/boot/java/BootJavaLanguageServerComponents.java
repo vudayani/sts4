@@ -174,7 +174,7 @@ public class BootJavaLanguageServerComponents implements LanguageServerComponent
 				Duration.ofSeconds(5),
 				sourceLinks);
 
-		codeLensHandler = createCodeLensEngine(springSymbolIndex);
+		codeLensHandler = createCodeLensEngine(springSymbolIndex, config, projectFinder);
 
 		highlightsEngine = createDocumentHighlightEngine(springSymbolIndex);
 		documents.onDocumentHighlight(highlightsEngine);
@@ -305,10 +305,10 @@ public class BootJavaLanguageServerComponents implements LanguageServerComponent
 		return new BootJavaReferencesHandler(this, cuCache, projectFinder, providers);
 	}
 
-	protected BootJavaCodeLensEngine createCodeLensEngine(SpringSymbolIndex index) {
+	protected BootJavaCodeLensEngine createCodeLensEngine(SpringSymbolIndex index, BootJavaConfig config, JavaProjectFinder projectFinder) {
 		Collection<CodeLensProvider> codeLensProvider = new ArrayList<>();
 		codeLensProvider.add(new WebfluxHandlerCodeLensProvider(index));
-		codeLensProvider.add(new QueryCodeLensProvider());
+		codeLensProvider.add(new QueryCodeLensProvider(config, projectFinder));
 
 		return new BootJavaCodeLensEngine(this, codeLensProvider);
 	}
