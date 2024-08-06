@@ -8,6 +8,8 @@ import java.util.concurrent.ExecutionException;
 
 import org.eclipse.lsp4j.CompletionItemKind;
 import org.eclipse.lsp4j.WorkspaceEdit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ide.vscode.boot.java.rewrite.RewriteRefactorings;
 import org.springframework.ide.vscode.commons.languageserver.completion.DocumentEdits;
 import org.springframework.ide.vscode.commons.languageserver.completion.ICompletionProposal;
@@ -24,6 +26,8 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 
 public class BeanCompletionProposal implements ICompletionProposal {
+	
+	private static final Logger log = LoggerFactory.getLogger(BeanCompletionProposal.class);
 
 	private DocumentEdits edits;
 	private IDocument doc;
@@ -84,12 +88,6 @@ public class BeanCompletionProposal implements ICompletionProposal {
 
 	@Override
 	public Optional<java.util.function.Supplier<DocumentEdits>> getAdditionalEdit() {
-//		FixDescriptor f = new FixDescriptor(ConstructorInjectionRecipe.class.getName(), List.of(this.doc.getUri()),"Inject bean completions")
-//					.withParameters(Map.of("fieldName", this.label, "classFqName","org.springframework.samples.petclinic.owner.TestController"))
-//					.withRecipeScope(RecipeScope.NODE);
-		
-//		com.vmware.tanzu.spring.framework.InjectBeanCompletionRecipe
-		
 		return Optional.of(() -> {
 			try {
 				FixDescriptor f = new FixDescriptor(InjectBeanCompletionRecipe.class.getName(), List.of(this.doc.getUri()),"Inject bean completions")
@@ -103,16 +101,11 @@ public class BeanCompletionProposal implements ICompletionProposal {
 					return docEdits;
 
 				});
-				if (docEditsFuture != null && !docEditsFuture.isDone()) {
-					Optional<DocumentEdits> docEdits = docEditsFuture.get();
-					return docEdits.orElse(null);
-				} else {
-					return null;
-				}
-			} catch (InterruptedException | ExecutionException e) {
-				e.printStackTrace();
-				return null;
-			}
+				return docEditsFuture.get().orElse(null);
+		    } catch (InterruptedException | ExecutionException e) {
+		    	log.error("" + e);
+		        return null;
+		    }
 		});
 	}
 }
