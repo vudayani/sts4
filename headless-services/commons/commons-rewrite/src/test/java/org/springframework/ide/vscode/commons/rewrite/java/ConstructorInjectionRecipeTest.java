@@ -402,6 +402,69 @@ this.a = a;
         runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
 	}
 	
+	@Test
+	void injectConstructorIntoNestedComponent() {
+		
+		String beforeSourceStr = """
+              package com.example.demo;
+                
+              import com.example.test.OwnerRepository;
+              
+              public class A {
+				  public class Inner {
+				            private final OwnerRepository ownerRepository;
+				            
+				            public void test() {
+				            
+				            }
+                  }
+              
+              }
+            """;
+		
+		String sourceStrPassed = """
+              package com.example.demo;
+                
+              import com.example.test.OwnerRepository;
+              
+              public class A {
+				  public class Inner {
+				            private final OwnerRepository ownerRepository;
+				            
+				            public void test() {
+				            
+				            }
+                  }
+              
+              }
+            """;
+
+        String expectedSourceStr = """
+              package com.example.demo;
+                
+              import com.example.test.OwnerRepository;
+
+              public class A {
+        		  public class Inner {
+				            private final OwnerRepository ownerRepository;
+				            
+				            Inner(OwnerRepository ownerRepository) {
+        		                this.ownerRepository = ownerRepository;
+        		            }
+				  }
+                  
+              }
+            """;
+
+		String dependsOn = """
+				    package com.example.test;
+				    public interface OwnerRepository{}
+				""";
+
+        Recipe recipe = new ConstructorInjectionRecipe("com.example.test.OwnerRepository", "ownerRepository", "com.example.demo.A$Inner");
+        runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
+	}
+	
 	
 //	@Test
 //    void fieldIntoExistingSingleConstructor() {

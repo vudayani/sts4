@@ -49,7 +49,7 @@ public class BeanCompletionProvider implements CompletionProvider {
 			}
 
 			IJavaProject project = optionalProject.get();
-			TypeDeclaration topLevelClass = findTopLevelClass(node);
+			TypeDeclaration topLevelClass = findParentClass(node);
 	        if (topLevelClass == null) {
 	            return;
 	        }
@@ -72,7 +72,7 @@ public class BeanCompletionProvider implements CompletionProvider {
 		}
 	}
 	
-	private static boolean isSpringComponent(TypeDeclaration node) {		
+	private static boolean isSpringComponent(TypeDeclaration node) {	
 	    for (IAnnotationBinding annotation : node.resolveBinding().getAnnotations()) {
 	        if (isSpringComponentAnnotation(annotation)) {
 	            return true;
@@ -94,10 +94,10 @@ public class BeanCompletionProvider implements CompletionProvider {
 	    return false;
 	}
 	
-	private static TypeDeclaration findTopLevelClass(ASTNode node) {
+	private static TypeDeclaration findParentClass(ASTNode node) {
 		ASTNode current = node;
-		while (current != null && !(current instanceof CompilationUnit)) {
-	        if (current.getParent() instanceof CompilationUnit && current instanceof TypeDeclaration) {
+		while (current != null) {
+	        if (current instanceof TypeDeclaration) {
 	            return (TypeDeclaration) current;
 	        }
 	        current = current.getParent();
@@ -106,6 +106,10 @@ public class BeanCompletionProvider implements CompletionProvider {
 	}
 	
 	private static String getFullyQualifiedName(TypeDeclaration typeDecl) {
+		if (typeDecl.resolveBinding() != null) {
+			String qualifiedName = typeDecl.resolveBinding().getQualifiedName();
+	        return qualifiedName.replaceAll("\\.(?=[^\\.]+$)", "\\$");
+	    }
 	    CompilationUnit cu = (CompilationUnit) typeDecl.getRoot();
 	    String packageName = cu.getPackage() != null ? cu.getPackage().getName().getFullyQualifiedName() : "";
 	    String typeName = typeDecl.getName().getFullyQualifiedName();
