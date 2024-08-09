@@ -226,6 +226,56 @@ public class AddFieldRecipeTest implements RewriteTest {
     }
 	
 	@Test
+    void addToNestedComponent() {
+		
+		String beforeSourceStr = """
+                package com.example.demo;
+                
+                class FooBar {
+                    class Inner {
+                    public void test() {
+                        ownerR
+                    }
+                    }
+                
+                }
+            """;
+		
+		String sourceStrPassed = """
+                package com.example.demo;
+                
+                class FooBar {
+                    class Inner {
+                    public void test() {}
+                    }
+                
+                }
+            """;
+
+        String expectedSourceStr = """
+    package com.example.demo;
+
+import com.example.test.OwnerRepository;
+
+class FooBar {
+        class Inner {
+            private final OwnerRepository ownerRepository;
+        public void test() {}
+        }
+
+    }
+            """;
+
+        String dependsOn = """
+                package com.example.test;
+                public interface OwnerRepository{}
+            """;
+
+        Recipe recipe = new AddFieldRecipe("com.example.test.OwnerRepository", "com.example.demo.FooBar$Inner");
+        runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
+    }
+	
+	@Test
     void addFieldToFirstClass() {
 		
 		String beforeSourceStr = """

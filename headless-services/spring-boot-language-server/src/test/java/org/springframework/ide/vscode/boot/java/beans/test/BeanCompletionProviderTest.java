@@ -261,6 +261,50 @@ public class TestBeanCompletionSecondClass {
 		assertCompletions(content, new String[] {}, 0, "");
 	}
 	
+	@Test
+	public void testBeanCompletion_nestedComponent() throws Exception {
+		String content = """
+package org.sample.test;
+
+import org.springframework.stereotype.Component;
+
+@Component
+public class TestBeanCompletionClass {
+		@Component
+		public class Inner {
+		
+			public void test() {
+				ownerRe<*>
+			}
+		}
+}	
+				""";
+		
+		assertCompletions(content, new String[] {"ownerRepository"}, 0, 
+				"""
+package org.sample.test;
+
+import org.springframework.samples.petclinic.owner.OwnerRepository;
+import org.springframework.stereotype.Component;
+
+@Component
+public class TestBeanCompletionClass {
+		@Component
+		public class Inner {
+			private final OwnerRepository ownerRepository;
+	
+			Inner(OwnerRepository ownerRepository) {
+	        	this.ownerRepository = ownerRepository;
+			}
+		
+			public void test() {
+				ownerRe<*>
+			}
+		}
+}	  
+							""");
+	}
+	
 	private String getCompletion(String completionLine) {
 		String content = """
 				package org.sample.test;

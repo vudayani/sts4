@@ -76,7 +76,6 @@ public class AddFieldRecipe extends Recipe {
 
 			@Override
 			public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
-
 				if (TypeUtils.isOfClassType(classDecl.getType(), classFqName)) {
 
 					// Check if the class already has the field
@@ -93,6 +92,7 @@ public class AddFieldRecipe extends Recipe {
 					}
 					return classDecl;
 				}
+				classDecl = (J.ClassDeclaration) super.visitClassDeclaration(classDecl, ctx);
 				return classDecl;
 			}
 		};
