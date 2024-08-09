@@ -1,8 +1,10 @@
 package org.springframework.ide.vscode.commons.rewrite.java;
 
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -86,18 +88,48 @@ public class ConstructorInjectionRecipe extends Recipe {
 
 		@Override
 		public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
-			return (ClassDeclaration) super.visitClassDeclaration(classDecl, ctx);
+			
+			classDecl = (J.ClassDeclaration) super.visitClassDeclaration(classDecl, ctx);
+			
+			for (J j : classDecl.getBody().getStatements()) {
+                if (j instanceof J.ClassDeclaration) {
+                    visitClassDeclaration((J.ClassDeclaration) j, ctx);
+                }
+            }
+			return classDecl;
 		}
+		
+		@Override
+        public J.Block visitBlock(J.Block block, ExecutionContext ctx) {
+//            System.out.println(TreeVisitingPrinter.printTree(getCursor()));
+//            System.out.println(TreeVisitingPrinter.printTree(block));
+            block = (Block) super.visitBlock(block, ctx);
+            return block;
+        }
 
 		@Override
 		public J.VariableDeclarations visitVariableDeclarations(J.VariableDeclarations multiVariable,
 				ExecutionContext ctx) {
+			
 			Cursor blockCursor = getCursor().dropParentUntil(it -> it instanceof J.Block || it == Cursor.ROOT_VALUE);
 			if (!(blockCursor.getValue() instanceof J.Block)) {
 				return multiVariable;
 			}
+			
+		    if (blockCursor.getParent() == null || !(blockCursor.getParent().getValue() instanceof J.ClassDeclaration)) {
+		        return multiVariable;
+		    }
+		    
+		    J.ClassDeclaration parentClass = (J.ClassDeclaration) blockCursor.getParent().getValue();
+			J.ClassDeclaration enclosingClass = findEnclosingClassContainingVariable(parentClass, multiVariable);
+			if(enclosingClass == null) {
+				return multiVariable;
+			}
+			
+//			System.out.println("enclosing class " + enclosingClass.getSimpleName());
+			
 			VariableDeclarations mv = multiVariable;
-			if (blockCursor.getParent() != null && blockCursor.getParent().getValue() instanceof ClassDeclaration
+			if (enclosingClass != null && enclosingClass instanceof ClassDeclaration
 					&& multiVariable.getVariables().size() == 1
 					&& fieldName.equals(multiVariable.getVariables().get(0).getName().getSimpleName())) {
 				if (mv.getModifiers().stream().noneMatch(m -> m.getType() == J.Modifier.Type.Final)) {
@@ -117,7 +149,7 @@ public class ConstructorInjectionRecipe extends Recipe {
 				JavaType.FullyQualified fullyQualifiedType = JavaType.ShallowClass.build(fullyQualifiedName);
 				TypeTree fieldType = TypeTree.build(fullyQualifiedType.toString());
 				if (constructor == null) {
-					doAfterVisit(new AddConstructorVisitor(c.getSimpleName(), fieldName, fieldType));
+					doAfterVisit(new AddConstructorVisitor(enclosingClass.getSimpleName(), fieldName, fieldType, multiVariable));
 				} else {
 					doAfterVisit(new AddConstructorParameterAndAssignment(constructor, fieldName, fieldType));
 				}
@@ -130,50 +162,61 @@ public class ConstructorInjectionRecipe extends Recipe {
         private final String className;
         private final String fieldName;
         private final TypeTree type;
+        private final VariableDeclarations multiVariable;
 
-        public AddConstructorVisitor(String className, String fieldName, TypeTree type) {
+        public AddConstructorVisitor(String className, String fieldName, TypeTree type, VariableDeclarations multiVariable) {
             this.className = className;
             this.fieldName = fieldName;
             this.type = type;
+            this.multiVariable = multiVariable;
         }
 
         @Override
         public J visitBlock(Block block, ExecutionContext p) {
-            if (getCursor().getParent() != null) {
-                Object n = getCursor().getParent().getValue();
-                if (n instanceof ClassDeclaration) {
-                    ClassDeclaration classDecl = (ClassDeclaration) n;
-                    JavaType.FullyQualified typeFqn = TypeUtils.asFullyQualified(type.getType());
-                    if (typeFqn != null && classDecl.getKind() == ClassDeclaration.Kind.Type.Class && className.equals(classDecl.getSimpleName())) {
-                        JavaTemplate.Builder template = JavaTemplate.builder(""
-                                + classDecl.getSimpleName() + "(" + getFieldType(typeFqn) + " " + fieldName + ") {\n"
-                                + "this." + fieldName + " = " + fieldName + ";\n"
-                                + "}\n"
-                        ).contextSensitive();
-                        FullyQualified fq = TypeUtils.asFullyQualified(type.getType());
-                        if (fq != null) {
-                            template.imports(fq.getFullyQualifiedName());
-                            maybeAddImport(fq);
-                        }
-                        Optional<Statement> firstMethod = block.getStatements().stream().filter(MethodDeclaration.class::isInstance).findFirst();
+        	
+        	for (Statement stat : block.getStatements()) {
+                if (stat == multiVariable) {
+                	if (getCursor().getParent() != null) {
+                        Object n = getCursor().getParent().getValue();
+                        if (n instanceof ClassDeclaration) {
+                            ClassDeclaration classDecl = (ClassDeclaration) n;
+                            JavaType.FullyQualified typeFqn = TypeUtils.asFullyQualified(type.getType());
+                            if (typeFqn != null && classDecl.getKind() == ClassDeclaration.Kind.Type.Class && className.equals(classDecl.getSimpleName())) {
+                                JavaTemplate.Builder template = JavaTemplate.builder(""
+                                        + classDecl.getSimpleName() + "(" + getFieldType(typeFqn) + " " + fieldName + ") {\n"
+                                        + "this." + fieldName + " = " + fieldName + ";\n"
+                                        + "}\n"
+                                ).contextSensitive();
+                                FullyQualified fq = TypeUtils.asFullyQualified(type.getType());
+                                if (fq != null) {
+                                    template.imports(fq.getFullyQualifiedName());
+                                    maybeAddImport(fq);
+                                }
+                                Optional<Statement> firstMethod = block.getStatements().stream().filter(MethodDeclaration.class::isInstance).findFirst();
 
-                        return firstMethod.map(statement ->
-                                (J) template.build()
-                                    .apply(getCursor(),
-                                        statement.getCoordinates().before()
+                                return firstMethod.map(statement ->
+                                        (J) template.build()
+                                            .apply(getCursor(),
+                                                statement.getCoordinates().before()
+                                            )
                                     )
-                            )
-                            .orElseGet(() ->
-                                template.build()
-                                    .apply(
-                                        getCursor(),
-                                        block.getCoordinates().lastStatement()
-                                    )
-                            );
+                                    .orElseGet(() ->
+                                        template.build()
+                                            .apply(
+                                                getCursor(),
+                                                block.getCoordinates().lastStatement()
+                                            )
+                                    );
+                            }
+                        }
                     }
+                    return block;
+                } else {
+                	return (Block) super.visitBlock(block, p);
                 }
             }
-            return block;
+			return block;
+            
         }
     }
 
@@ -222,6 +265,29 @@ public class ConstructorInjectionRecipe extends Recipe {
             }
             return md;
         }
+    }
+    
+    private static J.ClassDeclaration findEnclosingClassContainingVariable(J.ClassDeclaration topLevelClassDecl, J.VariableDeclarations targetVariable) {
+        Queue<J.ClassDeclaration> queue = new LinkedList<>();
+        queue.add(topLevelClassDecl);
+
+        while (!queue.isEmpty()) {
+            J.ClassDeclaration currentClass = queue.poll();
+
+            for (Statement statement : currentClass.getBody().getStatements()) {
+                if (statement == targetVariable) {
+                    return currentClass;
+                }
+            }
+
+            for (Statement statement : currentClass.getBody().getStatements()) {
+                if (statement instanceof J.ClassDeclaration) {
+                    queue.add((J.ClassDeclaration) statement);
+                }
+            }
+        }
+
+        return null;
     }
 
     private static String getFieldType(JavaType.FullyQualified fullyQualifiedType) {
