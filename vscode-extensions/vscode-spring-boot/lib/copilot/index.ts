@@ -20,9 +20,6 @@ export async function activateCopilotFeatures(context: ExtensionContext): Promis
         await updateConfigurationBasedOnCopilotAccess(context);
     });
 
-    let test = await context.globalState.get('boot-java.highlight-copilot-codelens.on');
-    console.log("val "+ test);
-
     springBootAgent.activate(context);
     explainQueryWithCopilot();
 
@@ -63,7 +60,7 @@ async function waitUntilExtensionActivated(extensionId: string, interval: number
 async function updateConfigurationBasedOnCopilotAccess(context: ExtensionContext) {
 
     if (!isExtensionInstalled(REQUIRED_EXTENSION) || !isExtensionActivated(REQUIRED_EXTENSION)) {
-        await updateConfiguration(false, context);
+        await updateConfiguration(false);
         return;
     }
 
@@ -71,17 +68,14 @@ async function updateConfigurationBasedOnCopilotAccess(context: ExtensionContext
     if (!model) {
         const models = await lm.selectChatModels();
         logger.error(`No suitable model, available models: [${models.map(m => m.name).join(', ')}]. Please make sure you have installed the latest "GitHub Copilot Chat" (v0.16.0 or later) and all \`lm\` API is enabled.`);
-        await updateConfiguration(false, context);
+        await updateConfiguration(false);
     } else {
-        await updateConfiguration(true, context);
+        await updateConfiguration(true);
     }
 }
 
-async function updateConfiguration(value: boolean, context: ExtensionContext) {
-    const configuration = workspace.getConfiguration();
-    // await context.globalState.update('boot-java.highlight-copilot-codelens.on', value);
-    await configuration.update('boot-java.highlight-copilot-codelens.on', value, ConfigurationTarget.Global);
-    console.log(configuration.get('boot-java.highlight-copilot-codelens.on'));
+async function updateConfiguration(value: boolean) {
+    commands.executeCommand('sts/enable/copilot/features', value);
 }
 
 async function explainQueryWithCopilot() {

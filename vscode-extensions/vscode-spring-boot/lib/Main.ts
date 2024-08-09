@@ -155,6 +155,8 @@ export function activate(context: ExtensionContext): Thenable<ExtensionAPI> {
             registerClasspathService(client);
             registerJavaDataService(client);
 
+            activateCopilotFeatures(context);
+
             // Force classpath listener to be enabled. Boot LS can only be launched iff classpath is available and there Spring-Boot on the classpath somewhere.
             commands.executeCommand('sts.vscode-spring-boot.enableClasspathListening', true);
 
@@ -171,8 +173,6 @@ export function activate(context: ExtensionContext): Thenable<ExtensionAPI> {
         registerMiscCommands(context);
 
         commands.registerCommand('vscode-spring-boot.agent.apply', applyLspEdit);
-
-        activateCopilotFeatures(context);
 
         return new ApiManager(client).api;
     });
