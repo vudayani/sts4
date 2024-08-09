@@ -403,7 +403,7 @@ this.a = a;
 	}
 	
 	@Test
-	void injectConstructorIntoNestedComponent() {
+	void innerClass_InjectFieldIntoNewConstructor() {
 		
 		String beforeSourceStr = """
               package com.example.demo;
@@ -440,20 +440,24 @@ this.a = a;
             """;
 
         String expectedSourceStr = """
-              package com.example.demo;
-                
-              import com.example.test.OwnerRepository;
+        package com.example.demo;
 
-              public class A {
-        		  public class Inner {
-				            private final OwnerRepository ownerRepository;
-				            
-				            Inner(OwnerRepository ownerRepository) {
-        		                this.ownerRepository = ownerRepository;
-        		            }
-				  }
-                  
-              }
+        import com.example.test.OwnerRepository;
+
+        public class A {
+public class Inner {
+          private final OwnerRepository ownerRepository;
+
+            Inner(OwnerRepository ownerRepository) {
+                this.ownerRepository = ownerRepository;
+            }
+
+          public void test() {
+
+          }
+            }
+
+        }
             """;
 
 		String dependsOn = """
@@ -465,40 +469,168 @@ this.a = a;
         runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
 	}
 	
+	@Test
+	void nestedClass_InjectFieldIntoExistingConstructorWithFields() {
+		
+		String beforeSourceStr = """
+              package com.example.demo;
+                
+              import com.example.test.OwnerRepository;
+              
+              public class A {
+				  public class Inner {
+				  			String a;
+				            private final OwnerRepository ownerRepository;
+				            
+				            Inner(String a) {
+								this.a = a;
+							}
+				            
+				            public void test() {
+				            
+				            }
+                  }
+              
+              }
+            """;
+		
+		String sourceStrPassed = """
+              package com.example.demo;
+                
+              import com.example.test.OwnerRepository;
+              
+              public class A {
+				  public class Inner {
+				  			String a;
+				            private final OwnerRepository ownerRepository;
+				            
+				            Inner(String a) {
+								this.a = a;
+							}
+				            
+				            public void test() {
+				            
+				            }
+                  }
+              
+              }
+            """;
+
+        String expectedSourceStr = """
+        package com.example.demo;
+
+        import com.example.test.OwnerRepository;
+
+        public class A {
+public class Inner {
+			String a;
+          private final OwnerRepository ownerRepository;
+
+          Inner(String a, OwnerRepository ownerRepository) {
+		this.a = a;
+              this.ownerRepository = ownerRepository;
+	}
+
+          public void test() {
+
+          }
+            }
+
+        }
+            """;
+
+		String dependsOn = """
+				    package com.example.test;
+				    public interface OwnerRepository{}
+				""";
+
+        Recipe recipe = new ConstructorInjectionRecipe("com.example.test.OwnerRepository", "ownerRepository", "com.example.demo.A$Inner");
+        runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
+	}
 	
-//	@Test
-//    void fieldIntoExistingSingleConstructor() {
-//        //language=java
-//        rewriteRun(
-//          java(
-//            """
-//              package com.example.demo;
-//
-//              import com.example.demo.OwnerRepository;
-//              
-//              public class A {
-//              
-//                  private final OwnerRepository ownerRepository;
-//              
-//              }
-//              """,
-//            """
-//              package com.example.demo;
-//              
-//              import com.example.demo.OwnerRepository;
-//              
-//              public class A {
-//              
-//                  private final OwnerRepository ownerRepository;
-//                  
-//                  A(OwnerRepository ownerRepository) {
-//                      this.ownerRepository = ownerRepository;
-//                  }
-//                 
-//              }
-//              """
-//          )
-//        );
-//    }
+	@Test
+	void nestedClass_InjectFieldIntoExistingSingleConstructor() {
+		
+		String beforeSourceStr = """
+              package com.example.demo;
+                
+              import com.example.test.OwnerRepository;
+              
+              public class A {
+				  int param;
+				  A(int param) {
+				    this.param = param;
+				  }
+				  public class Inner {
+				            private final OwnerRepository ownerRepository;
+				            
+				            Inner() {
+				            }
+				            
+				            public void test() {
+				            
+				            }
+                  }
+              
+              }
+            """;
+		
+		String sourceStrPassed = """
+              package com.example.demo;
+                
+              import com.example.test.OwnerRepository;
+              
+              public class A {
+				  int param;
+				  A(int param) {
+				    this.param = param;
+				  }
+				  public class Inner {
+				            private final OwnerRepository ownerRepository;
+				            
+				            Inner() {
+				            }
+				            
+				            public void test() {
+				            
+				            }
+                  }
+              
+              }
+            """;
+
+        String expectedSourceStr = """
+        package com.example.demo;
+
+        import com.example.test.OwnerRepository;
+
+        public class A {
+int param;
+A(int param) {
+  this.param = param;
+}
+public class Inner {
+          private final OwnerRepository ownerRepository;
+
+          Inner(OwnerRepository ownerRepository) {
+              this.ownerRepository = ownerRepository;
+          }
+
+          public void test() {
+
+          }
+            }
+
+        }
+            """;
+
+		String dependsOn = """
+				    package com.example.test;
+				    public interface OwnerRepository{}
+				""";
+
+        Recipe recipe = new ConstructorInjectionRecipe("com.example.test.OwnerRepository", "ownerRepository", "com.example.demo.A$Inner");
+        runRecipeAndAssert(recipe, beforeSourceStr, sourceStrPassed, expectedSourceStr, dependsOn);
+	}
 
 }
