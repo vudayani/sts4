@@ -3,6 +3,7 @@ package org.springframework.ide.vscode.boot.java.spel;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Annotation;
@@ -14,16 +15,17 @@ import org.eclipse.jdt.core.dom.SingleMemberAnnotation;
 import org.eclipse.lsp4j.CodeLens;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
-import org.springframework.ide.vscode.boot.app.BootJavaConfig;
 import org.springframework.ide.vscode.boot.java.handlers.CodeLensProvider;
 import org.springframework.ide.vscode.boot.java.spel.AnnotationParamSpelExtractor.Snippet;
 import org.springframework.ide.vscode.commons.java.IJavaProject;
 import org.springframework.ide.vscode.commons.java.SpringProjectUtil;
 import org.springframework.ide.vscode.commons.languageserver.java.JavaProjectFinder;
+import org.springframework.ide.vscode.commons.languageserver.util.SimpleLanguageServer;
 import org.springframework.ide.vscode.commons.util.BadLocationException;
 import org.springframework.ide.vscode.commons.util.text.TextDocument;
 
 import com.google.common.collect.ImmutableList;
+import com.google.gson.JsonPrimitive;
 
 /**
  * @author Udayani V
@@ -39,6 +41,7 @@ public class QueryCodeLensProvider implements CodeLensProvider {
     private static final String CMD = "vscode-spring-boot.query.explain";
     private static final String EXPLAIN_SPEL_TITLE = "Explain Spel Expression using Copilot";
     private static final String EXPLAIN_QUERY_TITLE = "Explain Query using Copilot";
+    private static final String CMD_ENABLE_COPILOT_FEATURES = "sts/enable/copilot/features";
     
 	private final AnnotationParamSpelExtractor[] spelExtractors = AnnotationParamSpelExtractor.SPEL_EXTRACTORS;
 	
@@ -46,10 +49,13 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 	
 	private boolean showCodeLenses;
 	
-	public QueryCodeLensProvider(BootJavaConfig config, JavaProjectFinder projectFinder) {
+	public QueryCodeLensProvider(JavaProjectFinder projectFinder, SimpleLanguageServer server) {
 		this.projectFinder = projectFinder;
-		config.addListener(l -> {
-			showCodeLenses = config.getCopilotCodeLensesSetting();
+		server.onCommand(CMD_ENABLE_COPILOT_FEATURES, params -> {
+			if (params.getArguments().get(0) instanceof JsonPrimitive) {
+				showCodeLenses = ((JsonPrimitive)params.getArguments().get(0)).getAsBoolean();
+			}
+			return CompletableFuture.completedFuture(showCodeLenses);	
 		});
 	}
 
