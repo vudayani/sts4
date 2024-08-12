@@ -31,7 +31,12 @@ import com.google.gson.JsonPrimitive;
  * @author Udayani V
  */
 public class QueryCodeLensProvider implements CodeLensProvider {
-
+	
+	
+	public static final String CMD_ENABLE_COPILOT_FEATURES = "sts/enable/copilot/features";
+    public static final String EXPLAIN_SPEL_TITLE = "Explain Spel Expression using Copilot";
+    public static final String EXPLAIN_QUERY_TITLE = "Explain Query using Copilot";
+    
 	private static final String QUERY = "Query";
 	private static final String FQN_QUERY = "org.springframework.data.jpa.repository." + QUERY;
 	private static final String SPEL_EXPRESSION_QUERY_PROMPT = "Explain the following SpEL Expression in detail: \n";
@@ -39,21 +44,18 @@ public class QueryCodeLensProvider implements CodeLensProvider {
     private static final String HQL_QUERY_PROMPT = "Explain the following HQL query in detail. If the query contains any SpEL expressions, explain those parts as well: \n";
     private static final String DEFAULT_QUERY_PROMPT = "Explain the following query in detail: \n";
     private static final String CMD = "vscode-spring-boot.query.explain";
-    private static final String EXPLAIN_SPEL_TITLE = "Explain Spel Expression using Copilot";
-    private static final String EXPLAIN_QUERY_TITLE = "Explain Query using Copilot";
-    private static final String CMD_ENABLE_COPILOT_FEATURES = "sts/enable/copilot/features";
     
 	private final AnnotationParamSpelExtractor[] spelExtractors = AnnotationParamSpelExtractor.SPEL_EXTRACTORS;
 	
 	private final JavaProjectFinder projectFinder;
 	
-	private boolean showCodeLenses;
+	private static boolean showCodeLenses;
 	
 	public QueryCodeLensProvider(JavaProjectFinder projectFinder, SimpleLanguageServer server) {
 		this.projectFinder = projectFinder;
 		server.onCommand(CMD_ENABLE_COPILOT_FEATURES, params -> {
 			if (params.getArguments().get(0) instanceof JsonPrimitive) {
-				this.showCodeLenses = ((JsonPrimitive)params.getArguments().get(0)).getAsBoolean();
+				QueryCodeLensProvider.showCodeLenses = ((JsonPrimitive)params.getArguments().get(0)).getAsBoolean();
 			}
 			return CompletableFuture.completedFuture(showCodeLenses);	
 		});
