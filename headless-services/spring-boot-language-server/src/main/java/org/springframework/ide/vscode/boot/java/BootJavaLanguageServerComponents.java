@@ -40,6 +40,7 @@ import org.springframework.ide.vscode.boot.java.handlers.BootJavaWorkspaceSymbol
 import org.springframework.ide.vscode.boot.java.handlers.CodeLensProvider;
 import org.springframework.ide.vscode.boot.java.handlers.HighlightProvider;
 import org.springframework.ide.vscode.boot.java.handlers.HoverProvider;
+import org.springframework.ide.vscode.boot.java.handlers.QueryCodeLensProvider;
 import org.springframework.ide.vscode.boot.java.handlers.ReferenceProvider;
 import org.springframework.ide.vscode.boot.java.links.SourceLinks;
 import org.springframework.ide.vscode.boot.java.livehover.ActiveProfilesProvider;
@@ -55,7 +56,6 @@ import org.springframework.ide.vscode.boot.java.requestmapping.LiveAppURLSymbolP
 import org.springframework.ide.vscode.boot.java.requestmapping.RequestMappingHoverProvider;
 import org.springframework.ide.vscode.boot.java.requestmapping.WebfluxHandlerCodeLensProvider;
 import org.springframework.ide.vscode.boot.java.requestmapping.WebfluxRouteHighlightProdivder;
-import org.springframework.ide.vscode.boot.java.spel.QueryCodeLensProvider;
 import org.springframework.ide.vscode.boot.java.utils.CompilationUnitCache;
 import org.springframework.ide.vscode.boot.java.utils.SpringLiveChangeDetectionWatchdog;
 import org.springframework.ide.vscode.boot.java.value.ValueHoverProvider;

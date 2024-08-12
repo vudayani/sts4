@@ -1,4 +1,4 @@
-package org.springframework.ide.vscode.boot.java.spel;
+package org.springframework.ide.vscode.boot.java.handlers;
 
 import java.util.Arrays;
 import java.util.List;
@@ -15,7 +15,7 @@ import org.eclipse.jdt.core.dom.SingleMemberAnnotation;
 import org.eclipse.lsp4j.CodeLens;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
-import org.springframework.ide.vscode.boot.java.handlers.CodeLensProvider;
+import org.springframework.ide.vscode.boot.java.spel.AnnotationParamSpelExtractor;
 import org.springframework.ide.vscode.boot.java.spel.AnnotationParamSpelExtractor.Snippet;
 import org.springframework.ide.vscode.commons.java.IJavaProject;
 import org.springframework.ide.vscode.commons.java.SpringProjectUtil;
@@ -53,7 +53,7 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 		this.projectFinder = projectFinder;
 		server.onCommand(CMD_ENABLE_COPILOT_FEATURES, params -> {
 			if (params.getArguments().get(0) instanceof JsonPrimitive) {
-				showCodeLenses = ((JsonPrimitive)params.getArguments().get(0)).getAsBoolean();
+				this.showCodeLenses = ((JsonPrimitive)params.getArguments().get(0)).getAsBoolean();
 			}
 			return CompletableFuture.completedFuture(showCodeLenses);	
 		});
@@ -71,12 +71,12 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 			public boolean visit(SingleMemberAnnotation node) {
 				Arrays.stream(spelExtractors).map(e -> e.getSpelRegion(node)).filter(o -> o.isPresent())
 						.map(o -> o.get()).forEach(snippet -> {
-							provideCodeLens(cancelToken, node, document, snippet, resultAccumulator);
+							provideCodeLensForSpelExpression(cancelToken, node, document, snippet, resultAccumulator);
 						});
 
 				if (isQueryAnnotation(node)) {
 					String queryPrompt = determineQueryPrompt(document);
-					provideCodeLens(cancelToken, node, document, node.getValue(), queryPrompt, resultAccumulator);
+					provideCodeLensForQuery(cancelToken, node, document, node.getValue(), queryPrompt, resultAccumulator);
 				}
 
 				return super.visit(node);
@@ -86,7 +86,7 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 			public boolean visit(NormalAnnotation node) {
 				Arrays.stream(spelExtractors).map(e -> e.getSpelRegion(node)).filter(o -> o.isPresent())
 						.map(o -> o.get()).forEach(snippet -> {
-							provideCodeLens(cancelToken, node, document, snippet, resultAccumulator);
+							provideCodeLensForSpelExpression(cancelToken, node, document, snippet, resultAccumulator);
 						});
 
 				if (isQueryAnnotation(node)) {
@@ -95,7 +95,7 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 						if (value instanceof MemberValuePair) {
 							MemberValuePair pair = (MemberValuePair) value;
 							if ("value".equals(pair.getName().getIdentifier())) {
-								provideCodeLens(cancelToken, node, document, pair.getValue(), queryPrompt, resultAccumulator);
+								provideCodeLensForQuery(cancelToken, node, document, pair.getValue(), queryPrompt, resultAccumulator);
 								break;
 							}
 						}
@@ -107,7 +107,7 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 		});
 	}
 
-	protected void provideCodeLens(CancelChecker cancelToken, Annotation node, TextDocument document, Snippet snippet,
+	protected void provideCodeLensForSpelExpression(CancelChecker cancelToken, Annotation node, TextDocument document, Snippet snippet,
 			List<CodeLens> resultAccumulator) {
 		cancelToken.checkCanceled();
 
@@ -130,7 +130,7 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 		}
 	}
 
-	protected void provideCodeLens(CancelChecker cancelToken, Annotation node, TextDocument document,
+	protected void provideCodeLensForQuery(CancelChecker cancelToken, Annotation node, TextDocument document,
 			Expression valueExp, String query, List<CodeLens> resultAccumulator) {
 		cancelToken.checkCanceled();
 
