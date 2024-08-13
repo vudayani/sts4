@@ -291,14 +291,15 @@ import org.springframework.stereotype.Component;
 public class TestBeanCompletionClass {
 		@Component
 		public class Inner {
-			private final OwnerRepository ownerRepository;
-	
-			Inner(OwnerRepository ownerRepository) {
-	        	this.ownerRepository = ownerRepository;
-			}
-		
+
+            private final OwnerRepository ownerRepository;
+
+            Inner(OwnerRepository ownerRepository) {
+                this.ownerRepository = ownerRepository;
+            }
+
 			public void test() {
-				ownerRe<*>
+				ownerRepository<*>
 			}
 		}
 }	  

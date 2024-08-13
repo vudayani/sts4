@@ -403,7 +403,7 @@ this.a = a;
 	}
 	
 	@Test
-	void innerClass_InjectFieldIntoNewConstructor() {
+	void nestedClass_InjectFieldIntoNewConstructor() {
 		
 		String beforeSourceStr = """
               package com.example.demo;
@@ -412,6 +412,7 @@ this.a = a;
               
               public class A {
 				  public class Inner {
+				  			String a;
 				            private final OwnerRepository ownerRepository;
 				            
 				            public void test() {
@@ -429,6 +430,7 @@ this.a = a;
               
               public class A {
 				  public class Inner {
+				  			String a;
 				            private final OwnerRepository ownerRepository;
 				            
 				            public void test() {
@@ -446,6 +448,7 @@ this.a = a;
 
         public class A {
 public class Inner {
+			String a;
           private final OwnerRepository ownerRepository;
 
             Inner(OwnerRepository ownerRepository) {
