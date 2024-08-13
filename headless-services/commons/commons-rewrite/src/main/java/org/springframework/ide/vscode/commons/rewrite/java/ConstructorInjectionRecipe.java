@@ -93,7 +93,6 @@ public class ConstructorInjectionRecipe extends Recipe {
 			
 			for (J j : classDecl.getBody().getStatements()) {
                 if (j instanceof J.ClassDeclaration) {
-//                	updateCursor((J.ClassDeclaration) j);
                     visitClassDeclaration((J.ClassDeclaration) j, ctx);
                 }
             }
@@ -109,18 +108,6 @@ public class ConstructorInjectionRecipe extends Recipe {
 		@Override
 		public J.VariableDeclarations visitVariableDeclarations(J.VariableDeclarations multiVariable,
 				ExecutionContext ctx) {
-			
-//			Cursor cursor = getCursor();
-//	          J.ClassDeclaration enclosingClass1 = null;
-//	          while (cursor != null) {
-//	              Object value = cursor.getValue();
-//	              if (value instanceof J.ClassDeclaration) {
-//	                  enclosingClass1 = (J.ClassDeclaration) value;
-////	                  enclosingClass = (ClassDeclaration) super.visitClassDeclaration(enclosingClass, ctx);
-//	                  break;
-//	              }
-//	              cursor = cursor.getParent();
-//	          }
 			
 			Cursor blockCursor = getCursor().dropParentUntil(it -> it instanceof J.Block || it == Cursor.ROOT_VALUE);
 			if (!(blockCursor.getValue() instanceof J.Block)) {
