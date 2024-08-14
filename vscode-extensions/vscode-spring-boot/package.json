@@ -1279,24 +1279,7 @@
         "scopeName": "source.spring-factories",
         "path": "./properties-support/spring-factories.tmLanguage.json"
       }
-    ],
-    "viewsContainers": {
-      "panel": [
-        {
-          "id": "copilotResultsViewContainer",
-          "title": "Copilot Query Results",
-          "icon": "media/icon.svg"
-        }
-      ]
-    },
-    "views": {
-      "copilotResultsViewContainer": [
-        {
-          "id": "copilotResultsPanel",
-          "name": "Copilot Query Results"
-        }
-      ]
-    }
+    ]
   },
   "main": "./out/lib/Main",
   "scripts": {
