@@ -10,14 +10,20 @@ export async function activateCopilotFeatures(context: ExtensionContext): Promis
         return;
     }
 
+    workspace.onDidChangeConfiguration(event => {
+        if (event.affectsConfiguration('boot-java.highlight-copilot-codelens.on')) {
+            promptReloadWindow();
+        }
+    });
+
     logger.info("vscode.lm is ready.");
     await ensureExtensionInstalledAndActivated();
-    await updateConfigurationBasedOnCopilotAccess(context);
+    await updateConfigurationBasedOnCopilotAccess();
 
     // Add listener to handle installation/uninstallation of the required extension
     extensions.onDidChange(async () => {
         await ensureExtensionInstalledAndActivated();
-        await updateConfigurationBasedOnCopilotAccess(context);
+        await updateConfigurationBasedOnCopilotAccess();
     });
 
     springBootAgent.activate(context);
@@ -57,7 +63,7 @@ async function waitUntilExtensionActivated(extensionId: string, interval: number
     });
 }
 
-async function updateConfigurationBasedOnCopilotAccess(context: ExtensionContext) {
+async function updateConfigurationBasedOnCopilotAccess() {
 
     if (!isExtensionInstalled(REQUIRED_EXTENSION) || !isExtensionActivated(REQUIRED_EXTENSION)) {
         await updateConfiguration(false);
@@ -75,7 +81,10 @@ async function updateConfigurationBasedOnCopilotAccess(context: ExtensionContext
 }
 
 async function updateConfiguration(value: boolean) {
-    commands.executeCommand('sts/enable/copilot/features', value);
+    const configValue = workspace.getConfiguration().get('boot-java.highlight-copilot-codelens.on');
+    if(value && configValue === true) {
+        commands.executeCommand('sts/enable/copilot/features', value);
+    }
 }
 
 async function explainQueryWithCopilot() {
@@ -85,4 +94,15 @@ async function explainQueryWithCopilot() {
 
         await commands.executeCommand('workbench.action.chat.open', { query: userPrompt });
     })
+}
+
+async function promptReloadWindow() {
+    const reload = await window.showInformationMessage(
+        'Configuration updated. Please reload VS Code to apply changes.',
+        'Reload'
+    );
+
+    if (reload === 'Reload') {
+        await commands.executeCommand('workbench.action.reloadWindow');
+    }
 }
