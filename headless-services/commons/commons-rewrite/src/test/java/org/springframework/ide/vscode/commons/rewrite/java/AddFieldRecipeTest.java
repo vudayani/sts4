@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * Copyright (c) 2017, 2024 Broadcom, Inc.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     Broadcom, Inc. - initial API and implementation
+ *******************************************************************************/
 package org.springframework.ide.vscode.commons.rewrite.java;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,40 +54,6 @@ public class AddFieldRecipeTest implements RewriteTest {
         org.openrewrite.Result res = recipeRun.getChangeset().getAllResults().get(0);
         assertThat(res.getAfter().printAll()).isEqualTo(expectedSourceStr);
     }
-	
-	// This adds a new field when the LST is valid
-//	@Test
-//    void addField() {
-//        rewriteRun(
-//        	spec -> spec.recipe(new AddFieldRecipe("com.example.test.OwnerRepository", "com.example.demo.FooBar")),
-//            java(
-//                """
-//                    package com.example.demo;
-//                    
-//                  import com.example.test.OwnerRepository;
-//                    
-//                  class FooBar {
-//            		    
-//            		    public void test() {}
-//                    
-//                    }
-//                """,
-//                """
-//                package com.example.demo;
-//                
-//              import com.example.test.OwnerRepository;
-//               
-//              class FooBar {
-//                
-//                  private final OwnerRepository ownerRepository;
-//        		    
-//        		    public void test() {}
-//                
-//                }
-//                """
-//              )
-//        );
-//    }
 	
 	// The test parses invalid LST and then applies the recipe
 	@Test

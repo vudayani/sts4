@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * Copyright (c) 2017, 2024 Broadcom, Inc.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     Broadcom, Inc. - initial API and implementation
+ *******************************************************************************/
 package org.springframework.ide.vscode.commons.rewrite.java;
 
 import org.openrewrite.Cursor;
@@ -16,6 +26,9 @@ import org.openrewrite.java.tree.TypeUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * @author Udayani V
+ */
 public class AddFieldRecipe extends Recipe {
 
 	@Override
