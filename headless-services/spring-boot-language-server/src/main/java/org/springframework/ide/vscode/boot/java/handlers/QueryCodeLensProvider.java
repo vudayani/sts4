@@ -10,16 +10,20 @@
  *******************************************************************************/
 package org.springframework.ide.vscode.boot.java.handlers;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Annotation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.MemberValuePair;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.NormalAnnotation;
 import org.eclipse.jdt.core.dom.SingleMemberAnnotation;
 import org.eclipse.lsp4j.CodeLens;
@@ -55,6 +59,8 @@ public class QueryCodeLensProvider implements CodeLensProvider {
     private static final String DEFAULT_QUERY_PROMPT = "Explain the following query in detail: \n";
     private static final String CMD = "vscode-spring-boot.query.explain";
     
+    private static final Pattern METHOD_PATTERN = Pattern.compile("\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(");
+    
 	private final AnnotationParamSpelExtractor[] spelExtractors = AnnotationParamSpelExtractor.SPEL_EXTRACTORS;
 	
 	private final JavaProjectFinder projectFinder;
@@ -81,9 +87,11 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 
 			@Override
 			public boolean visit(SingleMemberAnnotation node) {
+				String additionalContext = getAdditionalContext(cu, node.getValue().toString());
+				
 				Arrays.stream(spelExtractors).map(e -> e.getSpelRegion(node)).filter(o -> o.isPresent())
 						.map(o -> o.get()).forEach(snippet -> {
-							provideCodeLensForSpelExpression(cancelToken, node, document, snippet, resultAccumulator);
+							provideCodeLensForSpelExpression(cancelToken, node, document, snippet, additionalContext, resultAccumulator);
 						});
 
 				if (isQueryAnnotation(node)) {
@@ -96,9 +104,11 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 
 			@Override
 			public boolean visit(NormalAnnotation node) {
+				String additionalContext = getAdditionalContext(cu, node.toString());
+				
 				Arrays.stream(spelExtractors).map(e -> e.getSpelRegion(node)).filter(o -> o.isPresent())
 						.map(o -> o.get()).forEach(snippet -> {
-							provideCodeLensForSpelExpression(cancelToken, node, document, snippet, resultAccumulator);
+							provideCodeLensForSpelExpression(cancelToken, node, document, snippet, additionalContext, resultAccumulator);
 						});
 
 				if (isQueryAnnotation(node)) {
@@ -120,19 +130,18 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 	}
 
 	protected void provideCodeLensForSpelExpression(CancelChecker cancelToken, Annotation node, TextDocument document, Snippet snippet,
-			List<CodeLens> resultAccumulator) {
+			String additionalContext, List<CodeLens> resultAccumulator) {
 		cancelToken.checkCanceled();
 
 		if (snippet != null) {
 			try {
-
 				CodeLens codeLens = new CodeLens();
 				codeLens.setRange(document.toRange(snippet.offset(), snippet.text().length()));
 
 				Command cmd = new Command();
 				cmd.setTitle(EXPLAIN_SPEL_TITLE);
 				cmd.setCommand(CMD);
-				cmd.setArguments(ImmutableList.of(SPEL_EXPRESSION_QUERY_PROMPT + snippet.text()));
+				cmd.setArguments(ImmutableList.of(SPEL_EXPRESSION_QUERY_PROMPT + snippet.text() + "\n\n"+ additionalContext));
 				codeLens.setCommand(cmd);
 
 				resultAccumulator.add(codeLens);
@@ -177,6 +186,36 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 	        return SpringProjectUtil.hasDependencyStartingWith(jp, "hibernate-core", null) ? HQL_QUERY_PROMPT : JPQL_QUERY_PROMPT;
 	    }
 	    return DEFAULT_QUERY_PROMPT;
+	}
+	
+	private String getAdditionalContext(CompilationUnit cu, String node) {
+		List<String> methodDef = new ArrayList<>();
+		extractMethodNames(node, methodDef);
+
+		List<String> additionalContext = new ArrayList<>();
+		searchAndVisitMethods(methodDef, cu, additionalContext);
+		return String.join("/n", additionalContext);
+	}
+	
+	private void extractMethodNames(String spelExpression, List<String> methodDef) {
+        Matcher matcher = METHOD_PATTERN.matcher(spelExpression);
+        while (matcher.find()) {
+            methodDef.add(matcher.group(1));
+        }
+    }
+	
+	private void searchAndVisitMethods(List<String> methodNames, CompilationUnit cu, List<String> extraContext) {
+	    for (String methodName : methodNames) {
+	        cu.accept(new ASTVisitor() {
+	            @Override
+	            public boolean visit(MethodDeclaration node) {
+	                if (node.getName().getIdentifier().equals(methodName)) {
+	                    extraContext.add(node.toString());
+	                }
+	                return super.visit(node);
+	            }
+	        });
+	    }
 	}
 
 }
