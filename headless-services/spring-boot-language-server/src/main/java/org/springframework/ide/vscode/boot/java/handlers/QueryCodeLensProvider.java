@@ -45,42 +45,41 @@ import com.google.gson.JsonPrimitive;
  * @author Udayani V
  */
 public class QueryCodeLensProvider implements CodeLensProvider {
-	
-	
+
 	public static final String CMD_ENABLE_COPILOT_FEATURES = "sts/enable/copilot/features";
-    public static final String EXPLAIN_SPEL_TITLE = "Explain Spel Expression using Copilot";
-    public static final String EXPLAIN_QUERY_TITLE = "Explain Query using Copilot";
-    
+	public static final String EXPLAIN_SPEL_TITLE = "Explain Spel Expression using Copilot";
+	public static final String EXPLAIN_QUERY_TITLE = "Explain Query using Copilot";
+
 	private static final String QUERY = "Query";
 	private static final String FQN_QUERY = "org.springframework.data.jpa.repository." + QUERY;
 	private static final String SPEL_EXPRESSION_QUERY_PROMPT = "Explain the following SpEL Expression in detail: \n";
-    private static final String JPQL_QUERY_PROMPT = "Explain the following JPQL query in detail. If the query contains any SpEL expressions, explain those parts as well: \n";
-    private static final String HQL_QUERY_PROMPT = "Explain the following HQL query in detail. If the query contains any SpEL expressions, explain those parts as well: \n";
-    private static final String DEFAULT_QUERY_PROMPT = "Explain the following query in detail: \n";
-    private static final String CMD = "vscode-spring-boot.query.explain";
-    
-    private static final Pattern METHOD_PATTERN = Pattern.compile("\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(");
-    
+	private static final String JPQL_QUERY_PROMPT = "Explain the following JPQL query in detail. If the query contains any SpEL expressions, explain those parts as well: \n";
+	private static final String HQL_QUERY_PROMPT = "Explain the following HQL query in detail. If the query contains any SpEL expressions, explain those parts as well: \n";
+	private static final String DEFAULT_QUERY_PROMPT = "Explain the following query in detail: \n";
+	private static final String CMD = "vscode-spring-boot.query.explain";
+
+	private static final Pattern METHOD_PATTERN = Pattern.compile("\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(");
+
 	private final AnnotationParamSpelExtractor[] spelExtractors = AnnotationParamSpelExtractor.SPEL_EXTRACTORS;
-	
+
 	private final JavaProjectFinder projectFinder;
-	
+
 	private static boolean showCodeLenses;
-	
+
 	public QueryCodeLensProvider(JavaProjectFinder projectFinder, SimpleLanguageServer server) {
 		this.projectFinder = projectFinder;
 		server.onCommand(CMD_ENABLE_COPILOT_FEATURES, params -> {
 			if (params.getArguments().get(0) instanceof JsonPrimitive) {
-				QueryCodeLensProvider.showCodeLenses = ((JsonPrimitive)params.getArguments().get(0)).getAsBoolean();
+				QueryCodeLensProvider.showCodeLenses = ((JsonPrimitive) params.getArguments().get(0)).getAsBoolean();
 			}
-			return CompletableFuture.completedFuture(showCodeLenses);	
+			return CompletableFuture.completedFuture(showCodeLenses);
 		});
 	}
 
 	@Override
 	public void provideCodeLenses(CancelChecker cancelToken, TextDocument document, CompilationUnit cu,
 			List<CodeLens> resultAccumulator) {
-		if(!showCodeLenses) {
+		if (!showCodeLenses) {
 			return;
 		}
 		cu.accept(new ASTVisitor() {
@@ -88,15 +87,17 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 			@Override
 			public boolean visit(SingleMemberAnnotation node) {
 				String additionalContext = getAdditionalContext(cu, node.getValue().toString());
-				
+
 				Arrays.stream(spelExtractors).map(e -> e.getSpelRegion(node)).filter(o -> o.isPresent())
 						.map(o -> o.get()).forEach(snippet -> {
-							provideCodeLensForSpelExpression(cancelToken, node, document, snippet, additionalContext, resultAccumulator);
+							provideCodeLensForSpelExpression(cancelToken, node, document, snippet, additionalContext,
+									resultAccumulator);
 						});
 
 				if (isQueryAnnotation(node)) {
 					String queryPrompt = determineQueryPrompt(document);
-					provideCodeLensForQuery(cancelToken, node, document, node.getValue(), queryPrompt, resultAccumulator);
+					provideCodeLensForQuery(cancelToken, node, document, node.getValue(), queryPrompt,
+							resultAccumulator);
 				}
 
 				return super.visit(node);
@@ -105,10 +106,11 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 			@Override
 			public boolean visit(NormalAnnotation node) {
 				String additionalContext = getAdditionalContext(cu, node.toString());
-				
+
 				Arrays.stream(spelExtractors).map(e -> e.getSpelRegion(node)).filter(o -> o.isPresent())
 						.map(o -> o.get()).forEach(snippet -> {
-							provideCodeLensForSpelExpression(cancelToken, node, document, snippet, additionalContext, resultAccumulator);
+							provideCodeLensForSpelExpression(cancelToken, node, document, snippet, additionalContext,
+									resultAccumulator);
 						});
 
 				if (isQueryAnnotation(node)) {
@@ -117,7 +119,8 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 						if (value instanceof MemberValuePair) {
 							MemberValuePair pair = (MemberValuePair) value;
 							if ("value".equals(pair.getName().getIdentifier())) {
-								provideCodeLensForQuery(cancelToken, node, document, pair.getValue(), queryPrompt, resultAccumulator);
+								provideCodeLensForQuery(cancelToken, node, document, pair.getValue(), queryPrompt,
+										resultAccumulator);
 								break;
 							}
 						}
@@ -129,19 +132,30 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 		});
 	}
 
-	protected void provideCodeLensForSpelExpression(CancelChecker cancelToken, Annotation node, TextDocument document, Snippet snippet,
-			String additionalContext, List<CodeLens> resultAccumulator) {
+	protected void provideCodeLensForSpelExpression(CancelChecker cancelToken, Annotation node, TextDocument document,
+			Snippet snippet, String additionalContext, List<CodeLens> resultAccumulator) {
 		cancelToken.checkCanceled();
 
 		if (snippet != null) {
 			try {
+				String context = "";
+	            if (additionalContext != null && !additionalContext.isEmpty()) {
+	                context = """
+	                    Then, provide a brief summary of what the following method does, focusing on its role within the SpEL expression. 
+	                    The summary should mention key criteria the method checks but avoid detailed implementation steps. 
+	                    Please include this summary as an appendix to the main explanation, and avoid repeating information covered earlier.
+	                    
+	                	""" + additionalContext;
+	            }
+	            
 				CodeLens codeLens = new CodeLens();
 				codeLens.setRange(document.toRange(snippet.offset(), snippet.text().length()));
 
 				Command cmd = new Command();
 				cmd.setTitle(EXPLAIN_SPEL_TITLE);
 				cmd.setCommand(CMD);
-				cmd.setArguments(ImmutableList.of(SPEL_EXPRESSION_QUERY_PROMPT + snippet.text() + "\n\n"+ additionalContext));
+				cmd.setArguments(
+						ImmutableList.of(SPEL_EXPRESSION_QUERY_PROMPT + snippet.text() + "\n\n" + context));
 				codeLens.setCommand(cmd);
 
 				resultAccumulator.add(codeLens);
@@ -178,44 +192,46 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 		return FQN_QUERY.equals(a.getTypeName().getFullyQualifiedName())
 				|| QUERY.equals(a.getTypeName().getFullyQualifiedName());
 	}
-	
-	private String determineQueryPrompt(TextDocument document) {
-	    Optional<IJavaProject> optProject = projectFinder.find(document.getId());
-	    if (optProject.isPresent()) {
-	        IJavaProject jp = optProject.get();
-	        return SpringProjectUtil.hasDependencyStartingWith(jp, "hibernate-core", null) ? HQL_QUERY_PROMPT : JPQL_QUERY_PROMPT;
-	    }
-	    return DEFAULT_QUERY_PROMPT;
-	}
-	
-	private String getAdditionalContext(CompilationUnit cu, String node) {
-		List<String> methodDef = new ArrayList<>();
-		extractMethodNames(node, methodDef);
 
-		List<String> additionalContext = new ArrayList<>();
-		searchAndVisitMethods(methodDef, cu, additionalContext);
+	private String determineQueryPrompt(TextDocument document) {
+		Optional<IJavaProject> optProject = projectFinder.find(document.getId());
+		if (optProject.isPresent()) {
+			IJavaProject jp = optProject.get();
+			return SpringProjectUtil.hasDependencyStartingWith(jp, "hibernate-core", null) ? HQL_QUERY_PROMPT
+					: JPQL_QUERY_PROMPT;
+		}
+		return DEFAULT_QUERY_PROMPT;
+	}
+
+	private String getAdditionalContext(CompilationUnit cu, String node) {
+		List<String> methodDef = extractMethodNames(node);
+		List<String> additionalContext = searchAndVisitMethods(methodDef, cu);
 		return String.join("/n", additionalContext);
 	}
-	
-	private void extractMethodNames(String spelExpression, List<String> methodDef) {
-        Matcher matcher = METHOD_PATTERN.matcher(spelExpression);
-        while (matcher.find()) {
-            methodDef.add(matcher.group(1));
-        }
-    }
-	
-	private void searchAndVisitMethods(List<String> methodNames, CompilationUnit cu, List<String> extraContext) {
-	    for (String methodName : methodNames) {
-	        cu.accept(new ASTVisitor() {
-	            @Override
-	            public boolean visit(MethodDeclaration node) {
-	                if (node.getName().getIdentifier().equals(methodName)) {
-	                    extraContext.add(node.toString());
-	                }
-	                return super.visit(node);
-	            }
-	        });
-	    }
+
+	private List<String> extractMethodNames(String spelExpression) {
+		List<String> methodDef = new ArrayList<>();
+		Matcher matcher = METHOD_PATTERN.matcher(spelExpression);
+		while (matcher.find()) {
+			methodDef.add(matcher.group(1));
+		}
+		return methodDef;
+	}
+
+	private List<String> searchAndVisitMethods(List<String> methodNames, CompilationUnit cu) {
+		List<String> additionalContext = new ArrayList<>();
+		for (String methodName : methodNames) {
+			cu.accept(new ASTVisitor() {
+				@Override
+				public boolean visit(MethodDeclaration node) {
+					if (node.getName().getIdentifier().equals(methodName)) {
+						additionalContext.add(node.toString());
+					}
+					return super.visit(node);
+				}
+			});
+		}
+		return additionalContext;
 	}
 
 }

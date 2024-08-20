@@ -118,11 +118,34 @@ public class QueryCodeLensProviderTest {
 		TextDocumentInfo openedDoc = harness.openDocument(doc);
 
 		List<? extends CodeLens> codeLenses = harness.getCodeLenses(openedDoc);
+		
+		String expectedPrompt = """
+Explain the following SpEL Expression in detail: \nT(org.springframework.samples.petclinic.owner.SpelController).isValidVersion('${app.version}') ? 'Valid Version' :'Invalid Version'
+
+   Then, provide a brief summary of what the following method does, focusing on its role within the SpEL expression.
+   The summary should mention key criteria the method checks but avoid detailed implementation steps.
+   Please include this summary as an appendix to the main explanation, and avoid repeating information covered earlier.
+
+public static boolean isValidVersion(String version){
+  if (version.matches("\\\\d+\\\\.\\\\d+\\\\.\\\\d+")) {
+    String[] parts=version.split("\\\\.");
+    int major=Integer.parseInt(parts[0]);
+    int minor=Integer.parseInt(parts[1]);
+    int patch=Integer.parseInt(parts[2]);
+    return (major > 3) || (major == 3 && (minor > 0 || (minor == 0 && patch >= 0)));
+  }
+  return false;
+}
+				""";
 
 		assertEquals(2, codeLenses.size());
+		
+		String actualPrompt = codeLenses.get(1).getCommand().getArguments().get(0).toString();
 
 		assertTrue(containsCodeLens(codeLenses.get(0), QueryCodeLensProvider.EXPLAIN_SPEL_TITLE, 13, 17, 13, 111));
 		assertTrue(containsCodeLens(codeLenses.get(1), QueryCodeLensProvider.EXPLAIN_SPEL_TITLE, 16, 11, 16, 142));
+		
+		assertEquals(expectedPrompt, actualPrompt);
 	}
 	
 	@Test
