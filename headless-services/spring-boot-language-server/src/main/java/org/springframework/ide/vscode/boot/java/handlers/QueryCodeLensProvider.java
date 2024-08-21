@@ -12,11 +12,12 @@ package org.springframework.ide.vscode.boot.java.handlers;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Annotation;
@@ -29,16 +30,15 @@ import org.eclipse.jdt.core.dom.SingleMemberAnnotation;
 import org.eclipse.lsp4j.CodeLens;
 import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
-import org.springframework.expression.ParseException;
-import org.springframework.expression.spel.SpelNode;
-import org.springframework.expression.spel.ast.MethodReference;
-import org.springframework.expression.spel.standard.SpelExpression;
-import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ide.vscode.boot.java.spel.AnnotationParamSpelExtractor;
 import org.springframework.ide.vscode.boot.java.spel.AnnotationParamSpelExtractor.Snippet;
+import org.springframework.ide.vscode.boot.java.spel.SpelSemanticTokens;
 import org.springframework.ide.vscode.commons.java.IJavaProject;
 import org.springframework.ide.vscode.commons.java.SpringProjectUtil;
 import org.springframework.ide.vscode.commons.languageserver.java.JavaProjectFinder;
+import org.springframework.ide.vscode.commons.languageserver.semantic.tokens.SemanticTokenData;
 import org.springframework.ide.vscode.commons.languageserver.util.SimpleLanguageServer;
 import org.springframework.ide.vscode.commons.util.BadLocationException;
 import org.springframework.ide.vscode.commons.util.text.TextDocument;
@@ -50,6 +50,8 @@ import com.google.gson.JsonPrimitive;
  * @author Udayani V
  */
 public class QueryCodeLensProvider implements CodeLensProvider {
+	
+	protected static Logger logger = LoggerFactory.getLogger(QueryCodeLensProvider.class);
 
 	public static final String CMD_ENABLE_COPILOT_FEATURES = "sts/enable/copilot/features";
 	public static final String EXPLAIN_SPEL_TITLE = "Explain Spel Expression using Copilot";
@@ -66,11 +68,14 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 	private final AnnotationParamSpelExtractor[] spelExtractors = AnnotationParamSpelExtractor.SPEL_EXTRACTORS;
 
 	private final JavaProjectFinder projectFinder;
+	
+	private SpelSemanticTokens spelSemanticTokens;
 
 	private static boolean showCodeLenses;
 
-	public QueryCodeLensProvider(JavaProjectFinder projectFinder, SimpleLanguageServer server) {
+	public QueryCodeLensProvider(JavaProjectFinder projectFinder, SimpleLanguageServer server, SpelSemanticTokens spelSemanticTokens) {
 		this.projectFinder = projectFinder;
+		this.spelSemanticTokens = spelSemanticTokens;
 		server.onCommand(CMD_ENABLE_COPILOT_FEATURES, params -> {
 			if (params.getArguments().get(0) instanceof JsonPrimitive) {
 				QueryCodeLensProvider.showCodeLenses = ((JsonPrimitive) params.getArguments().get(0)).getAsBoolean();
@@ -92,8 +97,8 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 				Arrays.stream(spelExtractors).map(e -> e.getSpelRegion(node)).filter(o -> o.isPresent())
 						.map(o -> o.get()).forEach(snippet -> {
 							String additionalContext = parseSpelAndFetchContext(cu, snippet.text());
-								provideCodeLensForSpelExpression(cancelToken, node, document, snippet,
-										additionalContext, resultAccumulator);
+							provideCodeLensForSpelExpression(cancelToken, node, document, snippet,
+									additionalContext, resultAccumulator);
 						});
 
 				if (isQueryAnnotation(node)) {
@@ -183,7 +188,7 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 
 				resultAccumulator.add(codeLens);
 			} catch (BadLocationException e) {
-				e.printStackTrace();
+				logger.error("Error providing code lens: " + e.getMessage());
 			}
 		}
 	}
@@ -203,53 +208,41 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 		return DEFAULT_QUERY_PROMPT;
 	}
 
-	private String parseSpelAndFetchContext(CompilationUnit cu, String node) {
-		Set<String> methodRef = parseAndExtractMethodNamesFromSpel(node);
-		List<String> additionalContext = searchAndVisitMethods(methodRef, cu);
-		return String.join("\n", additionalContext);
+	private String parseSpelAndFetchContext(CompilationUnit cu, String spelExpression) {
+		List<SemanticTokenData> tokens = parseSpelExpression(spelExpression);
+		Set<String> methodNames = extractMethodNames(tokens, spelExpression);
+		List<String> context = collectMethodContexts(methodNames, cu);
+		return String.join("/n", context);
 	}
 
-	private Set<String> parseAndExtractMethodNamesFromSpel(String spelExpression) {
-		Set<String> methodNames = new HashSet<>();
-		SpelExpressionParser parser = new SpelExpressionParser();
+	private List<SemanticTokenData> parseSpelExpression(String spelText) {
 		try {
-			org.springframework.expression.Expression expression = parser.parseExpression(spelExpression);
-
-			SpelExpression spelExpressionAST = (SpelExpression) expression;
-			SpelNode rootNode = spelExpressionAST.getAST();
-
-			extractMethodNamesFromSpelNodes(rootNode, methodNames);
-		} catch (ParseException e) {
-			System.out.println("error" + e);
+			return spelSemanticTokens.computeTokens(spelText, 0);
+		} catch (Exception e) {
+			logger.error("Error computing tokens: " + e.getMessage());
+			return Collections.emptyList();
 		}
-		return methodNames;
 	}
 
-	private Set<String> extractMethodNamesFromSpelNodes(SpelNode node, Set<String> methodDef) {
-		if (node instanceof MethodReference) {
-			MethodReference methodRef = (MethodReference) node;
-			methodDef.add(methodRef.getName());
-		}
-		for (int i = 0; i < node.getChildCount(); i++) {
-			extractMethodNamesFromSpelNodes(node.getChild(i), methodDef);
-		}
-		return methodDef;
+	private static Set<String> extractMethodNames(List<SemanticTokenData> tokens, String spelText) {
+		return tokens.stream().filter(token -> "method".equals(token.type()))
+				.map(token -> spelText.substring(token.start(), token.end())).collect(Collectors.toSet());
 	}
 
-	private List<String> searchAndVisitMethods(Set<String> methodNames, CompilationUnit cu) {
-		List<String> additionalContext = new ArrayList<>();
+	private List<String> collectMethodContexts(Set<String> methodNames, CompilationUnit cu) {
+		List<String> methodContext = new ArrayList<>();
 		for (String methodName : methodNames) {
 			cu.accept(new ASTVisitor() {
 				@Override
 				public boolean visit(MethodDeclaration node) {
 					if (node.getName().getIdentifier().equals(methodName)) {
-						additionalContext.add(node.toString());
+						methodContext.add(node.toString());
 					}
 					return super.visit(node);
 				}
 			});
 		}
-		return additionalContext;
+		return methodContext;
 	}
 
 }

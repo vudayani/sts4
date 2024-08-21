@@ -39,6 +39,7 @@ import org.springframework.ide.vscode.boot.app.SpringSymbolIndex;
 import org.springframework.ide.vscode.boot.bootiful.BootLanguageServerTest;
 import org.springframework.ide.vscode.boot.bootiful.SymbolProviderTestConf;
 import org.springframework.ide.vscode.boot.java.handlers.QueryCodeLensProvider;
+import org.springframework.ide.vscode.boot.java.spel.SpelSemanticTokens;
 import org.springframework.ide.vscode.commons.languageserver.java.JavaProjectFinder;
 import org.springframework.ide.vscode.commons.languageserver.util.ExecuteCommandHandler;
 import org.springframework.ide.vscode.commons.languageserver.util.SimpleLanguageServer;
@@ -66,6 +67,9 @@ public class QueryCodeLensProviderTest {
 	@Autowired
 	private SpringSymbolIndex indexer;
 	private SimpleLanguageServer server;
+	
+	@Autowired
+	private SpelSemanticTokens spelSemanticTokens;
 
 	private ArgumentCaptor<ExecuteCommandHandler> commandHandlerCaptor;
 	private QueryCodeLensProvider queryCodeLensProvider;
@@ -78,7 +82,7 @@ public class QueryCodeLensProviderTest {
 		String projectDir = directory.toURI().toString();
 		server = mock(SimpleLanguageServer.class);
 		commandHandlerCaptor = ArgumentCaptor.forClass(ExecuteCommandHandler.class);
-		queryCodeLensProvider = new QueryCodeLensProvider(projectFinder, server);
+		queryCodeLensProvider = new QueryCodeLensProvider(projectFinder, server, spelSemanticTokens);
 
 		// trigger project creation
 		projectFinder.find(new TextDocumentIdentifier(projectDir)).get();
