@@ -259,7 +259,6 @@ public class BootJavaLanguageServerComponents implements LanguageServerComponent
 		ComponentInjectionsHoverProvider componentInjectionsHoverProvider = new ComponentInjectionsHoverProvider(sourceLinks);
 		BeanInjectedIntoHoverProvider beanInjectedIntoHoverProvider = new BeanInjectedIntoHoverProvider(sourceLinks);
 		ConditionalsLiveHoverProvider conditionalsLiveHoverProvider = new ConditionalsLiveHoverProvider();
-		CronExpressionsHoverProvider cronExpressionsHoverProvider = new CronExpressionsHoverProvider();
 
 		providers.put(Annotations.VALUE, valueHoverProvider);
 
@@ -296,7 +295,6 @@ public class BootJavaLanguageServerComponents implements LanguageServerComponent
 		providers.put(Annotations.CONDITIONAL_ON_JAVA, conditionalsLiveHoverProvider);
 		providers.put(Annotations.CONDITIONAL_ON_JNDI, conditionalsLiveHoverProvider);
 		providers.put(Annotations.CONDITIONAL_ON_SINGLE_CANDIDATE, conditionalsLiveHoverProvider);
-		providers.put(Annotations.SCHEDULED, cronExpressionsHoverProvider);
 
 		return new BootJavaHoverProvider(this, javaProjectFinder, providers, liveDataProvider);
 	}
