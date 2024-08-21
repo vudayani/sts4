@@ -136,6 +136,8 @@ public static boolean isValidVersion(String version){
   }
   return false;
 }
+
+
 				""";
 
 		assertEquals(2, codeLenses.size());
