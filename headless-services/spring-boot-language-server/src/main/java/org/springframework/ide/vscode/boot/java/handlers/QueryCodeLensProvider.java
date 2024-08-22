@@ -54,15 +54,9 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 	protected static Logger logger = LoggerFactory.getLogger(QueryCodeLensProvider.class);
 
 	public static final String CMD_ENABLE_COPILOT_FEATURES = "sts/enable/copilot/features";
-	public static final String EXPLAIN_SPEL_TITLE = "Explain Spel Expression using Copilot";
-	public static final String EXPLAIN_QUERY_TITLE = "Explain Query using Copilot";
 
 	private static final String QUERY = "Query";
 	private static final String FQN_QUERY = "org.springframework.data.jpa.repository." + QUERY;
-	private static final String SPEL_EXPRESSION_QUERY_PROMPT = "Explain the following SpEL Expression in detail: \n";
-	private static final String JPQL_QUERY_PROMPT = "Explain the following JPQL query in detail. If the query contains any SpEL expressions, explain those parts as well: \n";
-	private static final String HQL_QUERY_PROMPT = "Explain the following HQL query in detail. If the query contains any SpEL expressions, explain those parts as well: \n";
-	private static final String DEFAULT_QUERY_PROMPT = "Explain the following query in detail: \n";
 	private static final String CMD = "vscode-spring-boot.query.explain";
 
 	private final AnnotationParamSpelExtractor[] spelExtractors = AnnotationParamSpelExtractor.SPEL_EXTRACTORS;
@@ -148,19 +142,18 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 			try {
 				String context = additionalContext != null && !additionalContext.isEmpty() ? String.format(
 								"""
-								   Then, provide a brief summary of what the following method does, focusing on its role within the SpEL expression.
+								   Finally, provide a brief summary of what the following method does, focusing on its role within the SpEL expression.
 								   The summary should mention key criteria the method checks but avoid detailed implementation steps.
 								   Please include this summary as an appendix to the main explanation, and avoid repeating information covered earlier.\n\n%s
-
 								""",additionalContext) : "";
 
 				CodeLens codeLens = new CodeLens();
 				codeLens.setRange(document.toRange(snippet.offset(), snippet.text().length()));
 
 				Command cmd = new Command();
-				cmd.setTitle(EXPLAIN_SPEL_TITLE);
+				cmd.setTitle(QueryType.SPEL.getTitle());
 				cmd.setCommand(CMD);
-				cmd.setArguments(ImmutableList.of(SPEL_EXPRESSION_QUERY_PROMPT + snippet.text() + "\n\n" + context));
+				cmd.setArguments(ImmutableList.of(QueryType.SPEL.getPrompt() + snippet.text() + "\n\n" + context));
 				codeLens.setCommand(cmd);
 
 				resultAccumulator.add(codeLens);
@@ -181,7 +174,7 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 				codeLens.setRange(document.toRange(valueExp.getStartPosition(), valueExp.getLength()));
 
 				Command cmd = new Command();
-				cmd.setTitle(EXPLAIN_QUERY_TITLE);
+				cmd.setTitle(QueryType.DEFAULT.getTitle());
 				cmd.setCommand(CMD);
 				cmd.setArguments(ImmutableList.of(query + valueExp.toString()));
 				codeLens.setCommand(cmd);
@@ -202,10 +195,10 @@ public class QueryCodeLensProvider implements CodeLensProvider {
 		Optional<IJavaProject> optProject = projectFinder.find(document.getId());
 		if (optProject.isPresent()) {
 			IJavaProject jp = optProject.get();
-			return SpringProjectUtil.hasDependencyStartingWith(jp, "hibernate-core", null) ? HQL_QUERY_PROMPT
-					: JPQL_QUERY_PROMPT;
+			return SpringProjectUtil.hasDependencyStartingWith(jp, "hibernate-core", null) ? QueryType.HQL.getPrompt()
+					: QueryType.JPQL.getPrompt();
 		}
-		return DEFAULT_QUERY_PROMPT;
+		return QueryType.DEFAULT.getPrompt();
 	}
 
 	private String parseSpelAndFetchContext(CompilationUnit cu, String spelExpression) {
