@@ -127,7 +127,7 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 			public void exitBeanReference(BeanReferenceContext ctx) {
 				if (ctx.IDENTIFIER() != null) {
 					Token sym = ctx.IDENTIFIER().getSymbol();
-					logger.info(text.substring(sym.getStartIndex() + initialOffset, sym.getStartIndex()+sym.getText().length()+initialOffset));
+//					logger.info(text.substring(sym.getStartIndex() + initialOffset, sym.getStartIndex()+sym.getText().length()+initialOffset));
 					
 					tokens.add(ctx.IDENTIFIER().getSymbol().getText());
 				}
