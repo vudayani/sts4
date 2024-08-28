@@ -95,7 +95,7 @@ public class SpelDefinitionProviderTest {
 					@Value("${app.version}")
 					private String appVersion;
 
-					@Value("#{@visitService.isValidVersion('${app.version}') ? 'Valid Version' :'Invalid Version'}")
+					@Value(value = "#{@visitService.isValidVersion('${app.version}') ? 'Valid Version' :'Invalid Version'}")
 					private String versionValidity;
 				}""", tempJavaDocUri);
 

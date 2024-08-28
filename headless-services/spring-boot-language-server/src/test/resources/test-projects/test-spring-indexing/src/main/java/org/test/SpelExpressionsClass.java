@@ -14,7 +14,7 @@ public class SpelExpressionsClass {
 	@Value("#{@visitController.isValidVersion('${app.version}') ? 'Valid Version' :'Invalid Version'}")
 	private String versionValidity;
 
-	 @Value("#{@visitController.isValidVersion('${app.version}') ? @spelExpressionClass.toUpperCase('valid') :@spelExpressionClass.text2('invalid version)}")
+	 @Value("value = #{@visitController.isValidVersion('${app.version}') ? @spelExpressionClass.toUpperCase('valid') :@spelExpressionClass.text2('invalid version)}")
 	 private String fetchVersion;
 
 	@GetMapping("/validateVersion")

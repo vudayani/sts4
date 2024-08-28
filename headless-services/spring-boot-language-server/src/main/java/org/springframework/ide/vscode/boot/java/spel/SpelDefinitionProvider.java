@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ide.vscode.boot.index.SpringMetamodelIndex;
 import org.springframework.ide.vscode.boot.java.Annotations;
 import org.springframework.ide.vscode.boot.java.IJavaDefinitionProvider;
+import org.springframework.ide.vscode.boot.java.spel.AnnotationParamSpelExtractor.Snippet;
 import org.springframework.ide.vscode.boot.java.utils.ASTUtils;
 import org.springframework.ide.vscode.commons.java.IJavaProject;
 import org.springframework.ide.vscode.commons.protocol.spring.Bean;
@@ -77,7 +78,8 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 						.map(o -> o.get()).forEach(snippet -> {
 							List<Token> tokens = computeTokens(snippet.text(), offset);
 							if (tokens != null && tokens.size() > 0) {
-								locationLink.addAll(findLocationLinksForOffsetTokens(project, offset, tokens));
+							    int adjustedOffset = computeAdjustedOffset(offset, node.toString(), snippet);
+								locationLink.addAll(findLocationLinksForOffsetTokens(project, adjustedOffset, tokens));
 							}
 						});
 				return super.visit(node);
@@ -88,17 +90,25 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 
 				Arrays.stream(spelExtractors).map(e -> e.getSpelRegion(node)).filter(o -> o.isPresent())
 						.map(o -> o.get()).forEach(snippet -> {
+							computeAdjustedOffset(offset, node.toString(), snippet);
 							List<Token> tokens = computeTokens(snippet.text(), 0);
 							if (tokens != null && tokens.size() > 0) {
-								locationLink.addAll(findLocationLinksForOffsetTokens(project, offset, tokens));
+								int adjustedOffset = computeAdjustedOffset(offset, node.toString(), snippet);
+								locationLink.addAll(findLocationLinksForOffsetTokens(project, adjustedOffset, tokens));
 							}
 						});
 
 				return super.visit(node);
 			}
+
 		});
 		return locationLink;
 	}
+	
+	private int computeAdjustedOffset(int offset, String node, Snippet snippet) {
+		return offset - node.indexOf(snippet.text());
+	}
+
 
 	private List<LocationLink> findBeansWithName(IJavaProject project, String beanName) {
 		Bean[] beans = this.springIndex.getBeansWithName(project.getElementName(), beanName);
@@ -117,7 +127,7 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 	private boolean isOffsetWithinToken(Token token, int offset) {
 		int startIndex = token.getStartIndex();
 		int endIndex = startIndex + token.getText().length();
-		return startIndex <= (offset - 10) && (offset - 10) <= endIndex;
+		return startIndex <= (offset) && (offset) <= endIndex;
 	}
 
 	private List<Token> computeTokens(String text, int offset) {
