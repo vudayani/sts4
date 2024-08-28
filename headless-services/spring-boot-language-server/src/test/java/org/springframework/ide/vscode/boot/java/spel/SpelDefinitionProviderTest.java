@@ -128,7 +128,7 @@ public class SpelDefinitionProviderTest {
 							@Value("${app.version}")
 							private String appVersion;
 
-							@Value("#{@visitService.isValidVersion('${app.version}') ? @spelExpressionsClass.toUpperCase('valid') :@spelExpressionsClass.text2('invalid version)}")
+							@Value("#{@visitService.isValidVersion('${app.version}') ? @spelExpressionsClass.toUpperCase('valid') :@spelExpressionsClass.text2('invalid version')}")
 							private String fetchVersion;
 						}""",
 				tempJavaDocUri);
