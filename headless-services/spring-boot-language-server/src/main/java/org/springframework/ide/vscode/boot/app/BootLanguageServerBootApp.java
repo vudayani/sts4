@@ -403,7 +403,7 @@ public class BootLanguageServerBootApp {
 				new DependsOnDefinitionProvider(springIndex),
 				new ResourceDefinitionProvider(springIndex),
 				new QualifierDefinitionProvider(springIndex),
-				new DataQueryParameterDefinitionProvider(server.getTextDocumentService(), qurySemanticTokens)
+				new DataQueryParameterDefinitionProvider(server.getTextDocumentService(), qurySemanticTokens),
 				new SpelDefinitionProvider(springIndex)));
 	}
 	
