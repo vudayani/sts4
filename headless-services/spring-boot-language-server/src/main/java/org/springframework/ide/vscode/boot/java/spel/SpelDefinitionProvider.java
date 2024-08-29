@@ -18,11 +18,14 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Annotation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.IAnnotationBinding;
+import org.eclipse.jdt.core.dom.NodeFinder;
 import org.eclipse.jdt.core.dom.NormalAnnotation;
 import org.eclipse.jdt.core.dom.SingleMemberAnnotation;
 import org.eclipse.jdt.core.dom.StringLiteral;
 import org.eclipse.lsp4j.LocationLink;
+import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.CancelChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +44,7 @@ import org.springframework.ide.vscode.boot.java.IJavaDefinitionProvider;
 import org.springframework.ide.vscode.boot.java.spel.AnnotationParamSpelExtractor.Snippet;
 import org.springframework.ide.vscode.boot.java.utils.ASTUtils;
 import org.springframework.ide.vscode.commons.java.IJavaProject;
+import org.springframework.ide.vscode.commons.languageserver.semantic.tokens.SemanticTokenData;
 import org.springframework.ide.vscode.commons.protocol.spring.Bean;
 import org.springframework.ide.vscode.parser.spel.SpelLexer;
 import org.springframework.ide.vscode.parser.spel.SpelParser;
@@ -55,19 +59,19 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 
 	private final AnnotationParamSpelExtractor[] spelExtractors = AnnotationParamSpelExtractor.SPEL_EXTRACTORS;
 	
-	private List<Token> beanReferenceTokens = new ArrayList<>();
+	private List<TokenData> beanReferenceTokens = new ArrayList<>();
 	private List<Token> methodReferenceTokens = new ArrayList<>();
+	
+	public record TokenData(String text, int start, int end) {};
 
 	public SpelDefinitionProvider(SpringMetamodelIndex springIndex) {
 		this.springIndex = springIndex;
 	}
 
 	@Override
-	public List<LocationLink> getDefinitions(CancelChecker cancelToken, IJavaProject project, CompilationUnit cu,
-			ASTNode n, int offset) {
+	public List<LocationLink> getDefinitions(CancelChecker cancelToken, IJavaProject project, TextDocumentIdentifier docId, CompilationUnit cu, ASTNode n, int offset) {
 		if (n instanceof StringLiteral) {
 			StringLiteral valueNode = (StringLiteral) n;
-			logger.info("value node " + valueNode);
 
 			ASTNode parent = ASTUtils.getNearestAnnotationParent(valueNode);
 
@@ -89,35 +93,30 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 		cu.accept(new ASTVisitor() {
 			@Override
 			public boolean visit(SingleMemberAnnotation node) {
-				logger.info("offset : " + offset);
 				Arrays.stream(spelExtractors).map(e -> e.getSpelRegion(node)).filter(o -> o.isPresent())
 						.map(o -> o.get()).forEach(snippet -> {
-							computeTokens(snippet.text(), offset);
+							computeTokens(snippet.text(), snippet.offset());
 							if (beanReferenceTokens != null && beanReferenceTokens.size() > 0) {
-								int adjustedOffset = computeAdjustedOffset(offset, node.toString(), snippet);
 								locationLink.addAll(
-										findLocationLinksForOffsetTokens(project, adjustedOffset, beanReferenceTokens));
+										findLocationLinksForOffsetTokens(project, offset, beanReferenceTokens));
 							}
 
-//							parseAndExtractMethodNamesFromSpel(snippet.text());
+							parseAndExtractMethodNamesFromSpel(snippet.text());
 						});
 				return super.visit(node);
 			}
 
 			@Override
 			public boolean visit(NormalAnnotation node) {
-
 				Arrays.stream(spelExtractors).map(e -> e.getSpelRegion(node)).filter(o -> o.isPresent())
 						.map(o -> o.get()).forEach(snippet -> {
-							computeAdjustedOffset(offset, node.toString(), snippet);
-							computeTokens(snippet.text(), 0);
+							computeTokens(snippet.text(), snippet.offset());
 							if (beanReferenceTokens != null && beanReferenceTokens.size() > 0) {
-								int adjustedOffset = computeAdjustedOffset(offset, node.toString(), snippet);
 								locationLink.addAll(
-										findLocationLinksForOffsetTokens(project, adjustedOffset, beanReferenceTokens));
+										findLocationLinksForOffsetTokens(project, offset, beanReferenceTokens));
 							}
 
-//							parseAndExtractMethodNamesFromSpel(snippet.text());
+							parseAndExtractMethodNamesFromSpel(snippet.text());
 						});
 
 				return super.visit(node);
@@ -125,10 +124,6 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 
 		});
 		return locationLink;
-	}
-
-	private int computeAdjustedOffset(int offset, String node, Snippet snippet) {
-		return offset - node.indexOf(snippet.text());
 	}
 
 	private List<LocationLink> findBeansWithName(IJavaProject project, String beanName) {
@@ -140,22 +135,20 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 		}).collect(Collectors.toList());
 	}
 
-	private List<LocationLink> findLocationLinksForOffsetTokens(IJavaProject project, int offset, List<Token> tokens) {
+	private List<LocationLink> findLocationLinksForOffsetTokens(IJavaProject project, int offset, List<TokenData> tokens) {
 		return tokens.stream().filter(t -> isOffsetWithinToken(t, offset))
-				.flatMap(t -> findBeansWithName(project, t.getText()).stream()).collect(Collectors.toList());
+				.flatMap(t -> findBeansWithName(project, t.text()).stream()).collect(Collectors.toList());
 	}
 
-	private boolean isOffsetWithinToken(Token token, int offset) {
-		int startIndex = token.getStartIndex();
-		int endIndex = startIndex + token.getText().length();
-		return startIndex <= (offset) && (offset) <= endIndex;
+	private boolean isOffsetWithinToken(TokenData token, int offset) {
+		return token.start <= (offset) && (offset) <= token.end;
 	}
 
 	private void computeTokens(String text, int offset) {
 		SpelLexer lexer = new SpelLexer(CharStreams.fromString(text));
 		CommonTokenStream antlrTokens = new CommonTokenStream(lexer);
 		SpelParser parser = new SpelParser(antlrTokens);
-
+		
 		lexer.removeErrorListener(ConsoleErrorListener.INSTANCE);
 		parser.removeErrorListener(ConsoleErrorListener.INSTANCE);
 
@@ -164,11 +157,18 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 			@Override
 			public void exitBeanReference(BeanReferenceContext ctx) {
 				if (ctx.IDENTIFIER() != null) {
-					beanReferenceTokens.add(ctx.IDENTIFIER().getSymbol());
+					TokenData tokenData = extractTokenData(ctx.IDENTIFIER().getSymbol(), offset);
+					beanReferenceTokens.add(tokenData);
 				}
 				if (ctx.STRING_LITERAL() != null) {
-					beanReferenceTokens.add(ctx.STRING_LITERAL().getSymbol());
+					TokenData tokenData = extractTokenData(ctx.STRING_LITERAL().getSymbol(), offset);
+					beanReferenceTokens.add(tokenData);
 				}
+			}
+
+			private TokenData extractTokenData(Token sym, int offset) {
+				return new TokenData(sym.getText(), sym.getStartIndex() + offset,
+						sym.getStartIndex() + sym.getText().length() + offset);
 			}
 
 		});
@@ -215,13 +215,14 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 					if (child instanceof PropertyOrFieldReference || child instanceof BeanReference
 							|| child instanceof TypeReference) {
 //	                    return extractReferenceName(child);
-//						System.out.println("Found " + child.toStringAST().toString());
+						System.out.println("Found " + child.toStringAST().toString());
 						return;
 					}
 				}
 			}
 
 			if (className != null) {
+				System.out.println("className "+className);
 				methodClasses.put(methodName, className);
 			}
 		}

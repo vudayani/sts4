@@ -408,7 +408,6 @@ public class BootLanguageServerBootApp {
 				new QualifierDefinitionProvider(springIndex),
 				new NamedDefinitionProvider(springIndex),
 				new DataQueryParameterDefinitionProvider(server.getTextDocumentService(), qurySemanticTokens),
-				new DataQueryParameterDefinitionProvider(server.getTextDocumentService(), qurySemanticTokens),
 				new SpelDefinitionProvider(springIndex)));
 	}
 	
