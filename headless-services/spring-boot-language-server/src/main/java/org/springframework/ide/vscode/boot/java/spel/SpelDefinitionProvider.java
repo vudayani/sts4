@@ -18,9 +18,7 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Annotation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.IAnnotationBinding;
-import org.eclipse.jdt.core.dom.NodeFinder;
 import org.eclipse.jdt.core.dom.NormalAnnotation;
 import org.eclipse.jdt.core.dom.SingleMemberAnnotation;
 import org.eclipse.jdt.core.dom.StringLiteral;
@@ -41,10 +39,8 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.ide.vscode.boot.index.SpringMetamodelIndex;
 import org.springframework.ide.vscode.boot.java.Annotations;
 import org.springframework.ide.vscode.boot.java.IJavaDefinitionProvider;
-import org.springframework.ide.vscode.boot.java.spel.AnnotationParamSpelExtractor.Snippet;
 import org.springframework.ide.vscode.boot.java.utils.ASTUtils;
 import org.springframework.ide.vscode.commons.java.IJavaProject;
-import org.springframework.ide.vscode.commons.languageserver.semantic.tokens.SemanticTokenData;
 import org.springframework.ide.vscode.commons.protocol.spring.Bean;
 import org.springframework.ide.vscode.parser.spel.SpelLexer;
 import org.springframework.ide.vscode.parser.spel.SpelParser;
@@ -59,10 +55,10 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 
 	private final AnnotationParamSpelExtractor[] spelExtractors = AnnotationParamSpelExtractor.SPEL_EXTRACTORS;
 	
+	public record TokenData(String text, int start, int end) {};
+	
 	private List<TokenData> beanReferenceTokens = new ArrayList<>();
 	private List<Token> methodReferenceTokens = new ArrayList<>();
-	
-	public record TokenData(String text, int start, int end) {};
 
 	public SpelDefinitionProvider(SpringMetamodelIndex springIndex) {
 		this.springIndex = springIndex;
@@ -186,7 +182,6 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 			SpelNode rootNode = spelExpressionAST.getAST();
 			Map<String, String> methodClasses = new HashMap<>();
 			extractMethodClassesFromSpelNodes(rootNode, null, methodClasses);
-			methodClasses.entrySet().stream().forEach(p -> System.out.println(p.getKey() + " " + p.getValue()));
 		} catch (ParseException e) {
 			System.out.println("error" + e);
 		}
@@ -199,30 +194,24 @@ public class SpelDefinitionProvider implements IJavaDefinitionProvider {
 			MethodReference methodRef = (MethodReference) node;
 			String methodName = methodRef.getName();
 			String className = null;
-			System.out.println("method " + methodName);
-			System.out.println("parent " + parent.toStringAST().toString());
 			if (parent != null) {
 				if (parent instanceof PropertyOrFieldReference) {
 					className = ((PropertyOrFieldReference) parent).getName();
 				} else if (parent instanceof TypeReference) {
 					className = ((TypeReference) parent).toStringAST();
-				}
-			}
-
-			if (parent instanceof CompoundExpression) {
-				for (int i = 0; i < parent.getChildCount(); i++) {
-					SpelNode child = parent.getChild(i);
-					if (child instanceof PropertyOrFieldReference || child instanceof BeanReference
-							|| child instanceof TypeReference) {
-//	                    return extractReferenceName(child);
-						System.out.println("Found " + child.toStringAST().toString());
-						return;
+				} else if (parent instanceof CompoundExpression) {
+					for (int i = 0; i < parent.getChildCount(); i++) {
+						SpelNode child = parent.getChild(i);
+						if (child instanceof PropertyOrFieldReference || child instanceof BeanReference
+								|| child instanceof TypeReference) {
+							className = child.toStringAST();
+							break;
+						}
 					}
 				}
 			}
 
 			if (className != null) {
-				System.out.println("className "+className);
 				methodClasses.put(methodName, className);
 			}
 		}
