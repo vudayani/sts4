@@ -149,5 +149,44 @@ public class SpelDefinitionProviderTest {
 		editor.assertLinkTargets("spelExpressionsClass", List.of(expectedLocation2));
 
 	}
+	
+	@Test
+	public void testMultipleBeanDefinitionLinksWithTypeRefInSpel() throws Exception {
+
+		String tempJavaDocUri = directory.toPath().resolve("src/main/java/org/test/TempClass.java").toUri().toString();
+
+		Editor editor = harness.newEditor(LanguageId.JAVA,
+				"""
+						package org.test;
+
+						import org.springframework.beans.factory.annotation.Value;
+						import org.springframework.stereotype.Controller;
+						import org.springframework.web.bind.annotation.GetMapping;
+						import org.springframework.web.bind.annotation.ResponseBody;
+
+						@Controller
+						public class SpelExpressionsClass {
+
+							@Value("#{T(org.test.SpelExpressionClass).toUpperCase('hello') + ' ' + @spelExpressionsClass.concat('world', '!')}")
+							private String greeting;
+						}""",
+				tempJavaDocUri);
+
+//		Bean[] visitServiceBean = springIndex.getBeansWithName(project.getElementName(), "visitService");
+//		assertEquals(1, visitServiceBean.length);
+
+		Bean[] spelExpBean = springIndex.getBeansWithName(project.getElementName(), "spelExpressionsClass");
+		assertEquals(1, spelExpBean.length);
+
+//		LocationLink expectedLocation1 = new LocationLink(expectedDefinitionUriVisitService,
+//				visitServiceBean[0].getLocation().getRange(), visitServiceBean[0].getLocation().getRange(), null);
+
+		LocationLink expectedLocation2 = new LocationLink(expectedDefinitionUriSpelClass,
+				spelExpBean[0].getLocation().getRange(), spelExpBean[0].getLocation().getRange(), null);
+
+//		editor.assertLinkTargets("visitService", List.of(expectedLocation1));
+		editor.assertLinkTargets("spelExpressionsClass", List.of(expectedLocation2));
+
+	}
 
 }
