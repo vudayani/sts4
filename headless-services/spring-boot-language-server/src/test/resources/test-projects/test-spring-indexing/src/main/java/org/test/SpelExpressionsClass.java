@@ -14,14 +14,11 @@ public class SpelExpressionsClass {
 	@Value("#{@visitController.isValidVersion('${app.version}') ? 'Valid Version' :'Invalid Version'}")
 	private String versionValidity;
 
-	 @Value("value = #{@visitController.isValidVersion('${app.version}') ? @spelExpressionClass.toUpperCase('valid') :@spelExpressionClass.text2('invalid version)}")
-	 private String fetchVersion;
-
-	@GetMapping("/validateVersion")
-	@ResponseBody
-	public String validateVersion() {
-		return "Version Validity: " + versionValidity;
-	}
+	@Value("value = #{@visitController.isValidVersion('${app.version}') ? @spelExpressionClass.toUpperCase('valid') :@spelExpressionClass.text2('invalid version)}")
+	private String fetchVersion;
+	
+	@Value("#{T(org.test.SpelExpressionClass).toUpperCase('hello') + ' ' + @spelExpressionsClass.concat('world', '!')}")
+	private String greeting;
 
 	public static boolean isValidVersion(String version) {
 		if (version.matches("\\d+\\.\\d+\\.\\d+")) {

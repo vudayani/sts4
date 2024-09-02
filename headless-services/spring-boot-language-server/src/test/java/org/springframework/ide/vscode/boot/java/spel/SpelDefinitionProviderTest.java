@@ -172,21 +172,70 @@ public class SpelDefinitionProviderTest {
 						}""",
 				tempJavaDocUri);
 
-//		Bean[] visitServiceBean = springIndex.getBeansWithName(project.getElementName(), "visitService");
-//		assertEquals(1, visitServiceBean.length);
-
 		Bean[] spelExpBean = springIndex.getBeansWithName(project.getElementName(), "spelExpressionsClass");
 		assertEquals(1, spelExpBean.length);
-
-//		LocationLink expectedLocation1 = new LocationLink(expectedDefinitionUriVisitService,
-//				visitServiceBean[0].getLocation().getRange(), visitServiceBean[0].getLocation().getRange(), null);
 
 		LocationLink expectedLocation2 = new LocationLink(expectedDefinitionUriSpelClass,
 				spelExpBean[0].getLocation().getRange(), spelExpBean[0].getLocation().getRange(), null);
 
-//		editor.assertLinkTargets("visitService", List.of(expectedLocation1));
 		editor.assertLinkTargets("spelExpressionsClass", List.of(expectedLocation2));
 
+	}
+	
+	@Test
+	public void testMethodDefinitionLinkInSpel() throws Exception {
+		String tempJavaDocUri = directory.toPath().resolve("src/main/java/org/test/TempClass.java").toUri().toString();
+
+		Editor editor = harness.newEditor(LanguageId.JAVA, """
+				package org.test;
+
+				import org.springframework.beans.factory.annotation.Value;
+				import org.springframework.stereotype.Controller;
+				import org.springframework.web.bind.annotation.GetMapping;
+				import org.springframework.web.bind.annotation.ResponseBody;
+
+				@Controller
+				public class SpelExpressionsClass {
+
+					@Value("${app.version}")
+					private String appVersion;
+
+					@Value(value = "#{@visitService.isValidVersion('${app.version}') ? 'Valid Version' :'Invalid Version'}")
+					private String versionValidity;
+					
+					@Value("#{T(org.test.SpelExpressionClass).toUpperCase('hello') + ' ' + @spelExpressionsClass.concat('world', '!')}")
+					private String greeting;
+					
+					public static boolean isValidVersion(String version) {
+						if (version.matches("\\d+\\.\\d+\\.\\d+")) {
+							String[] parts = version.split("\\.");
+							int major = Integer.parseInt(parts[0]);
+							int minor = Integer.parseInt(parts[1]);
+							int patch = Integer.parseInt(parts[2]);
+							return (major > 3) || (major == 3 && (minor > 0 || (minor == 0 && patch >= 0)));
+						}
+						return false;
+					}
+				
+					public static String toUpperCase(String input) {
+						return input.toUpperCase();
+					}
+				
+					public static String concat(String str1, String str2) {
+						return str1 + str2;
+					}
+				}""", tempJavaDocUri);
+
+		LocationLink expectedLocation1 = new LocationLink(expectedDefinitionUriVisitService,
+				new Range(new Position(7, 23), new Position(7, 37)), new Range(new Position(7, 23), new Position(7, 37)), null);
+		LocationLink expectedLocation2 = new LocationLink(expectedDefinitionUriSpelClass,
+				new Range(new Position(37, 22), new Position(37, 28)), new Range(new Position(37, 22), new Position(37, 28)), null);
+//		LocationLink expectedLocation3 = new LocationLink(expectedDefinitionUriSpelClass,
+//				new Range(new Position(33, 22), new Position(33, 28)), new Range(new Position(33, 22), new Position(33, 28)), null);
+
+		editor.assertLinkTargets("isValidVersion", List.of(expectedLocation1));
+		editor.assertLinkTargets("concat", List.of(expectedLocation2));
+//		editor.assertLinkTargets("toUpperCase", List.of(expectedLocation3));
 	}
 
 }
