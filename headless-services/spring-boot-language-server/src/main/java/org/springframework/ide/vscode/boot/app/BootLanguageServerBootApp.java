@@ -404,7 +404,7 @@ public class BootLanguageServerBootApp {
 				new ResourceDefinitionProvider(springIndex),
 				new QualifierDefinitionProvider(springIndex),
 				new DataQueryParameterDefinitionProvider(server.getTextDocumentService(), qurySemanticTokens),
-				new SpelDefinitionProvider(springIndex)));
+				new SpelDefinitionProvider(springIndex, cuCache)));
 	}
 	
 	@Bean
