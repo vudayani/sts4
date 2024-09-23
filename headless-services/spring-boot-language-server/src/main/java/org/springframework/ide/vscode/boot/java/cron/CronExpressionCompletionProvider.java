@@ -41,8 +41,6 @@ public class CronExpressionCompletionProvider implements AnnotationAttributeComp
 
     @Override
     public Map<String, String> getCompletionCandidatesWithLabels(IJavaProject project) {
-    	System.out.println("Cron completion provider");
-        // Filter the map keys (cron expressions) based on user input
         return CRON_EXPRESSIONS_MAP;
     }
 }

@@ -47,7 +47,6 @@ public class CronExpressionsInlayHintsProvider implements JdtInlayHintsProvider 
 	@Override
 	public ASTVisitor getInlayHintsComputer(IJavaProject project, TextDocument doc, CompilationUnit cu,
 			Collector<InlayHint> collector) {
-		System.out.println("Cron Expresiion Inlay Hints Provider");
 		return new ASTVisitor() {
 
 			@Override
