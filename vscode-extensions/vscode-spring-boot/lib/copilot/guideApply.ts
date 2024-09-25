@@ -1,6 +1,5 @@
-import { Uri, workspace, window } from "vscode";
-import { SPRINGCLI } from "../Main";
-import { getTargetGuideMardown } from "./util";
+import { Uri, workspace, window, commands } from "vscode";
+import { getTargetGuideMardown, readResponseFromFile } from "./util";
 import { createConverter } from "vscode-languageclient/lib/common/protocolConverter";
 import fs from "fs";
 
@@ -13,7 +12,9 @@ export async function applyLspEdit(uri: Uri) {
         if (!uri) {
             uri = await getTargetGuideMardown();
         }
-        const lspEdit = await SPRINGCLI.guideLspEdit(uri);
+
+        const fileContent = (await readResponseFromFile(uri)).toString();
+        const lspEdit = await commands.executeCommand("sts/copilot/agent/lspEdits", fileContent);
         const workspaceEdit = await CONVERTER.asWorkspaceEdit(lspEdit);
         console.log(lspEdit);
 
