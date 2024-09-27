@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,10 +21,15 @@ import java.util.regex.Pattern;
 import org.apache.commons.io.IOUtils;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
+import org.eclipse.lsp4j.ChangeAnnotation;
+import org.eclipse.lsp4j.WorkspaceEdit;
 import org.openrewrite.Result;
 import org.springframework.ide.vscode.boot.java.copilot.util.ClassNameExtractor;
 import org.springframework.ide.vscode.boot.java.copilot.util.MavenDependencyReader;
 import org.springframework.ide.vscode.boot.java.copilot.util.PomReader;
+import org.springframework.ide.vscode.commons.languageserver.util.SimpleTextDocumentService;
+import org.springframework.ide.vscode.commons.rewrite.ORDocUtils;
+import org.springframework.ide.vscode.commons.util.text.TextDocument;
 
 public class ProjectArtifactEditGenerator {
 
@@ -38,8 +42,11 @@ public class ProjectArtifactEditGenerator {
 	private final Pattern compiledGroupIdPattern;
 
 	private final Pattern compiledArtifactIdPattern;
+	
+	private final SimpleTextDocumentService simpleTextDocumentService;
 
-	public ProjectArtifactEditGenerator(List<ProjectArtifact> projectArtifacts, Path projectPath, String readmeFileName) {
+	public ProjectArtifactEditGenerator(SimpleTextDocumentService simpleTextDocumentService, List<ProjectArtifact> projectArtifacts, Path projectPath, String readmeFileName) {
+		this.simpleTextDocumentService = simpleTextDocumentService;
 		this.projectArtifacts = projectArtifacts;
 		this.projectPath = projectPath;
 		this.readmeFileName = readmeFileName;
@@ -47,43 +54,41 @@ public class ProjectArtifactEditGenerator {
 		compiledArtifactIdPattern = Pattern.compile("<artifactId>(.*?)</artifactId>");
 	}
 
-	public ProcessArtifactResult<Lsp.WorkspaceEdit> process() throws IOException {
+	public ProcessArtifactResult<WorkspaceEdit> process() throws IOException {
 		return processArtifacts(projectArtifacts, projectPath);
 	}
 
-	private ProcessArtifactResult<Lsp.WorkspaceEdit> processArtifacts(List<ProjectArtifact> projectArtifacts,
+	private ProcessArtifactResult<WorkspaceEdit> processArtifacts(List<ProjectArtifact> projectArtifacts,
 			Path projectPath) throws IOException {
-		ProcessArtifactResult<Lsp.WorkspaceEdit> processArtifactResult = new ProcessArtifactResult<>();
+		ProcessArtifactResult<WorkspaceEdit> processArtifactResult = new ProcessArtifactResult<>();
 		String changeAnnotationId = UUID.randomUUID().toString();
-		Lsp.WorkspaceEdit we = new Lsp.WorkspaceEdit(new ArrayList<>(),
-				Map.of(changeAnnotationId, new Lsp.ChangeAnnotation("Apply %s".formatted(readmeFileName), true,
-						"Spring CLI applied guide from markdown file")));
+		WorkspaceEdit we = new WorkspaceEdit();
+		ChangeAnnotation changeAnnotation = new ChangeAnnotation();
+		changeAnnotation.setNeedsConfirmation(true);
+		we.setDocumentChanges(new ArrayList<>());
+		we.setChangeAnnotations(Map.of(changeAnnotationId, changeAnnotation));
 		for (ProjectArtifact projectArtifact : projectArtifacts) {
 			// try {
 			ProjectArtifactType artifactType = projectArtifact.getArtifactType();
 			switch (artifactType) {
 				case SOURCE_CODE:
-					we.documentChanges().addAll(writeSourceCode(projectArtifact, projectPath, changeAnnotationId));
+					writeSourceCode(projectArtifact, projectPath, changeAnnotationId, we);
 					break;
 				case TEST_CODE:
-					we.documentChanges().addAll(writeTestCode(projectArtifact, projectPath, changeAnnotationId));
+					writeTestCode(projectArtifact, projectPath, changeAnnotationId, we);
 					break;
 				case MAVEN_DEPENDENCIES:
-					we.documentChanges()
-						.addAll(writeMavenDependencies(projectArtifact, projectPath,
-								changeAnnotationId));
+					writeMavenDependencies(projectArtifact, projectPath,changeAnnotationId, we);
 					break;
 				case APPLICATION_PROPERTIES:
-					we.documentChanges()
-						.addAll(writeApplicationProperties(projectArtifact, projectPath, changeAnnotationId));
+					writeApplicationProperties(projectArtifact, projectPath, changeAnnotationId, we);
 					break;
 				case MAIN_CLASS:
-					we.documentChanges()
-						.addAll(updateMainApplicationClassAnnotations(projectArtifact, projectPath,
-								changeAnnotationId));
+					updateMainApplicationClassAnnotations(projectArtifact, projectPath,
+								changeAnnotationId, we);
 					break;
 				case HTML:
-					we.documentChanges().addAll(writeHtml(projectArtifact, projectPath, changeAnnotationId));
+					writeHtml(projectArtifact, projectPath, changeAnnotationId, we);
 					break;
 				default:
 					processArtifactResult.addToNotProcessed(projectArtifact);
@@ -94,32 +99,38 @@ public class ProjectArtifactEditGenerator {
 		return processArtifactResult;
 	}
 
-	private List<Lsp.ChangeOperation> writeSourceCode(ProjectArtifact projectArtifact, Path projectPath,
-			String changeAnnotationId) throws IOException {
+	private void writeSourceCode(ProjectArtifact projectArtifact, Path projectPath,
+			String changeAnnotationId, WorkspaceEdit we) throws IOException {
 		String packageName = this.calculatePackageForArtifact(projectArtifact);
 		ClassNameExtractor classNameExtractor = new ClassNameExtractor();
 		Optional<String> className = classNameExtractor.extractClassName(projectArtifact.getText());
 		if (className.isPresent()) {
 			Path output = resolveSourceFile(projectPath, packageName, className.get() + ".java");
-			return createEdit(output, getFileContent(output), projectArtifact.getText(), changeAnnotationId);
+			ORDocUtils.createWorkspaceEdit(simpleTextDocumentService, output.toUri().toASCIIString(), getFileContent(output), projectArtifact.getText(), changeAnnotationId, we);
 		}
-		return Collections.emptyList();
+	}
+	
+	private String getFileContent(Path file) throws IOException {
+		TextDocument doc = simpleTextDocumentService.getLatestSnapshot(file.toUri().toASCIIString());
+		if (doc != null) {
+			return doc.get();
+		}
+		return null;
 	}
 
-	private List<Lsp.ChangeOperation> writeTestCode(ProjectArtifact projectArtifact, Path projectPath,
-			String changeAnnotationId) throws IOException {
+	private void writeTestCode(ProjectArtifact projectArtifact, Path projectPath,
+			String changeAnnotationId, WorkspaceEdit we) throws IOException {
 		// TODO parameterize better to reduce code duplication
 		String packageName = this.calculatePackageForArtifact(projectArtifact);
 		ClassNameExtractor classNameExtractor = new ClassNameExtractor();
 		Optional<String> className = classNameExtractor.extractClassName(projectArtifact.getText());
 		if (className.isPresent()) {
 			Path output = resolveTestFile(projectPath, packageName, className.get() + ".java");
-			return createEdit(output, getFileContent(output), projectArtifact.getText(), changeAnnotationId);
+			ORDocUtils.createWorkspaceEdit(simpleTextDocumentService, output.toUri().toASCIIString(), getFileContent(output), projectArtifact.getText(), changeAnnotationId, we);
 		}
-		return Collections.emptyList();
 	}
 
-	private List<Lsp.ChangeOperation> writeMavenDependencies(ProjectArtifact projectArtifact, Path projectPath, String changeAnnotationId) {
+	private void writeMavenDependencies(ProjectArtifact projectArtifact, Path projectPath, String changeAnnotationId, WorkspaceEdit we) {
 		PomReader pomReader = new PomReader();
 		Path currentProjectPomPath = this.projectPath.resolve("pom.xml");
 		if (Files.notExists(currentProjectPomPath)) {
@@ -144,20 +155,26 @@ public class ProjectArtifactEditGenerator {
 		}
 
 		List<Result> res = injectMavenActionHandler.run().getChangeset().getAllResults();
-		return res.isEmpty() ? Collections.emptyList() : convertToEdits(res, changeAnnotationId);
+		if(!res.isEmpty()) {
+			 WorkspaceEdit workspaceEdit = ORDocUtils.createWorkspaceEdit(simpleTextDocumentService, res, changeAnnotationId).get();
+			 we.getDocumentChanges().addAll(workspaceEdit.getDocumentChanges());
+		}
+//		return res.isEmpty() ? Collections.emptyList() : 
+//			ORDocUtils.createWorkspaceEdit(simpleTextDocumentService, res, changeAnnotationId).get();
+//			convertToEdits(res, changeAnnotationId);
 	}
 
-	private List<Lsp.ChangeOperation> convertToEdits(List<Result> allResults, String changeAnnotationId) {
-		List<Lsp.ChangeOperation> edits = new ArrayList<>();
-		for (Result res : allResults) {
-			Path p = (res.getBefore() == null) ? res.getAfter().getSourcePath() : res.getBefore().getSourcePath();
-			String uri = p.toUri().toASCIIString();
-			ConversionUtils
-				.computeTextDocEdit(uri, res.getBefore().printAll(), res.getAfter().printAll(), changeAnnotationId)
-				.ifPresent(edits::add);
-		}
-		return edits;
-	}
+//	private List<Lsp.ChangeOperation> convertToEdits(List<Result> allResults, String changeAnnotationId) {
+//		List<Lsp.ChangeOperation> edits = new ArrayList<>();
+//		for (Result res : allResults) {
+//			Path p = (res.getBefore() == null) ? res.getAfter().getSourcePath() : res.getBefore().getSourcePath();
+//			String uri = p.toUri().toASCIIString();
+//			ConversionUtils
+//				.computeTextDocEdit(uri, res.getBefore().printAll(), res.getAfter().printAll(), changeAnnotationId)
+//				.ifPresent(edits::add);
+//		}
+//		return edits;
+//	}
 
 	private boolean candidateDependencyAlreadyPresent(ProjectDependency toMergeDependency,
 			List<Dependency> currentDependencies) {
@@ -201,8 +218,8 @@ public class ProjectArtifactEditGenerator {
 		return null;
 	}
 
-	private List<Lsp.ChangeOperation> writeApplicationProperties(ProjectArtifact projectArtifact, Path projectPath,
-			String changeAnnotationId) throws IOException {
+	private void writeApplicationProperties(ProjectArtifact projectArtifact, Path projectPath,
+			String changeAnnotationId, WorkspaceEdit we) throws IOException {
 		Path applicationPropertiesPath = projectPath.resolve("src")
 			.resolve("main")
 			.resolve("resources")
@@ -220,49 +237,23 @@ public class ProjectArtifactEditGenerator {
 		mergedProperties.store(sw, "updated by spring ai add");
 		sw.flush();
 		String newContent = sw.getBuffer().toString();
-
-		return createEdit(applicationPropertiesPath, getFileContent(applicationPropertiesPath), newContent,
-				changeAnnotationId);
+		ORDocUtils.createWorkspaceEdit(simpleTextDocumentService, applicationPropertiesPath.toUri().toASCIIString(), getFileContent(applicationPropertiesPath), newContent, changeAnnotationId, we);
 	}
 
-	private List<Lsp.ChangeOperation> updateMainApplicationClassAnnotations(ProjectArtifact projectArtifact,
-			Path projectPath, String changeAnnotationId) {
+	private void updateMainApplicationClassAnnotations(ProjectArtifact projectArtifact,
+			Path projectPath, String changeAnnotationId, WorkspaceEdit we) {
 		// TODO mer
-		return Collections.emptyList();
+//		return Collections.emptyList();
 	}
 
-	private List<Lsp.ChangeOperation> writeHtml(ProjectArtifact projectArtifact, Path projectPath,
-			String changeAnnotationId) throws IOException {
+	private void writeHtml(ProjectArtifact projectArtifact, Path projectPath,
+			String changeAnnotationId, WorkspaceEdit we) throws IOException {
 		String html = projectArtifact.getText();
 		String fileName = extractFilenameFromComment(html);
 		if (fileName != null) {
 			Path htmlFile = projectPath.resolve(fileName);
-			return createEdit(htmlFile, getFileContent(htmlFile), projectArtifact.getText(), changeAnnotationId);
+			ORDocUtils.createWorkspaceEdit(simpleTextDocumentService, fileName, getFileContent(htmlFile), projectArtifact.getText(), changeAnnotationId, we);
 		}
-		return Collections.emptyList();
-	}
-
-	private String getFileContent(Path file) throws IOException {
-		if (Files.exists(file)) {
-			return Files.readString(file);
-		}
-		return "";
-	}
-
-	private List<Lsp.ChangeOperation> createEdit(Path file, String oldContent, String newContent,
-			String changeAnnotationId) {
-		List<Lsp.ChangeOperation> edits = new ArrayList<>();
-		String uri = file.toUri().toASCIIString();
-		if (!Files.exists(file)) {
-			edits.add(new Lsp.CreateFile(uri, new Lsp.CreateFileOptions(true, false), changeAnnotationId));
-			edits.add(new Lsp.TextDocumentEdit(new Lsp.TextDocumentIdentifier(uri),
-					List.of(new Lsp.TextEdit(new Lsp.Range(new Lsp.Position(0, 0), new Lsp.Position(0, 0)), newContent,
-							changeAnnotationId))));
-		}
-		else {
-			ConversionUtils.computeTextDocEdit(uri, oldContent, newContent, changeAnnotationId).ifPresent(edits::add);
-		}
-		return edits;
 	}
 
 	private String calculatePackageForArtifact(ProjectArtifact projectArtifact) {

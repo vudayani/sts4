@@ -170,7 +170,7 @@ public class BootJavaLanguageServerComponents implements LanguageServerComponent
 		// create and handle commands
 		new SpringProcessCommandHandler(server, liveDataService, liveDataLocalProcessConnector, appContext.getBeansOfType(SpringProcessConnectorRemote.class).values());
 		
-		new CopilotAgentCommandHandler(server, responseModifier);
+		new CopilotAgentCommandHandler(server, projectFinder,responseModifier);
 		
 		docSymbolProvider = params -> springSymbolIndex.getSymbols(params.getTextDocument().getUri());
 		
